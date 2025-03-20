@@ -1,6 +1,6 @@
 #ifdef HAVE_SWAP
 
-#include "swap.h"
+#include "handle_check_address.h"
 #include "../get_public_key.h"
 #include <ctype.h>
 #include <string.h>
