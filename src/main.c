@@ -216,7 +216,6 @@ static void library_main(hedera_libargs_t *args) {
                 if (!end) {
                     library_main_helper(args);
                 }
-                PRINTF("AFTER END_TRY\n");
                 os_lib_end();
             }
             FINALLY {
