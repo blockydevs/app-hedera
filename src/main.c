@@ -1,3 +1,5 @@
+#include <utils.h>
+
 #include "app_globals.h"
 #include "glyphs.h"
 #include "handlers.h"
@@ -7,6 +9,7 @@
 #ifdef HAVE_SWAP
 #include "handle_check_address.h"
 #include "handle_get_printable_amount.h"
+#include "handle_swap_sign_transaction.h"
 #include "hedera_swap_utils.h"
 #endif
 
@@ -26,10 +29,23 @@ ux_state_t G_ux;
 bolos_ux_params_t G_ux_params;
 #endif
 
+volatile bool G_called_from_swap;
+volatile bool G_swap_response_ready;
+
+static void reset_main_globals(void) {
+    MEMCLEAR(G_io_apdu_buffer);
+    MEMCLEAR(G_io_seproxyhal_spi_buffer);
+}
+
 void app_main() {
     volatile unsigned int rx = 0;
     volatile unsigned int tx = 0;
     volatile unsigned int flags = 0;
+
+    // reset_getpubkey_globals();
+    reset_main_globals();
+
+    PRINTF("G_io_apdu_buffer before loop %u\n", G_io_apdu_buffer[OFFSET_INS]);
 
     for (;;) {
         volatile unsigned short sw = 0;
@@ -39,8 +55,12 @@ void app_main() {
                 rx = tx;
                 tx = 0; // ensure no race in catch_other if io_exchange throws
                         // an error
+                PRINTF("New APDU received:\n%.*H\n", rx, G_io_apdu_buffer);
+                PRINTF("G_io_apdu_buffer inside loop v0 %u\n", G_io_apdu_buffer[OFFSET_INS]);
                 rx = io_exchange(CHANNEL_APDU | flags, rx);
                 flags = 0;
+
+                PRINTF("G_io_apdu_buffer inside loop v1 %u\n", G_io_apdu_buffer[OFFSET_INS]);
 
                 // no APDU received; trigger a reset
                 if (rx == 0) {
@@ -52,9 +72,11 @@ void app_main() {
                     THROW(EXCEPTION_MALFORMED_APDU);
                 }
 
+                PRINTF("G_io_apdu_buffer inside loop v2 %u\n", G_io_apdu_buffer[OFFSET_INS]);
                 // APDU handler functions defined in handlers
                 switch (G_io_apdu_buffer[OFFSET_INS]) {
                     case INS_GET_APP_CONFIGURATION:
+                        PRINTF("i'm here skibidi v9.3\n");
                         // handlers -> get_app_configuration
                         handle_get_app_configuration(
                             G_io_apdu_buffer[OFFSET_P1],
@@ -65,6 +87,7 @@ void app_main() {
 
                     case INS_GET_PUBLIC_KEY:
                         // handlers -> get_public_key
+                            PRINTF("i'm here skibidi v9.2\n");
                         handle_get_public_key(G_io_apdu_buffer[OFFSET_P1],
                                               G_io_apdu_buffer[OFFSET_P2],
                                               G_io_apdu_buffer + OFFSET_CDATA,
@@ -74,6 +97,7 @@ void app_main() {
 
                     case INS_SIGN_TRANSACTION:
                         // handlers -> sign_transaction
+                            PRINTF("i'm here skibidi v9\n");
                         handle_sign_transaction(G_io_apdu_buffer[OFFSET_P1],
                                                 G_io_apdu_buffer[OFFSET_P2],
                                                 G_io_apdu_buffer + OFFSET_CDATA,
@@ -103,6 +127,7 @@ void app_main() {
                 G_io_apdu_buffer[tx++] = sw & 0xff;
             }
             FINALLY {
+                PRINTF("tutaj jestem    \n");
                 // explicitly do nothing
             }
         }
@@ -121,25 +146,60 @@ void app_exit(void) {
     END_TRY_L(exit);
 }
 
+// void nv_app_state_init() {
+//     if (N_storage.initialized != 0x01) {
+//         internalStorage_t storage;
+//         storage.settings.allow_blind_sign = BlindSignDisabled;
+// #if !defined(TARGET_NANOS)
+//         storage.settings.pubkey_display = PubkeyDisplayLong;
+// #else
+//         storage.settings.pubkey_display = PubkeyDisplayShort;
+// #endif
+//         storage.settings.display_mode = DisplayModeUser;
+//         storage.initialized = 0x01;
+//         nvm_write((void *) &N_storage, (void *) &storage, sizeof(internalStorage_t));
+//     }
+// }
+
+static void start_app_from_lib(void) {
+    G_called_from_swap = true;
+    G_swap_response_ready = false;
+    UX_INIT();
+#ifdef HAVE_NBGL
+    nbgl_useCaseSpinner("Signing");
+#endif  // HAVE_BAGL
+    io_seproxyhal_init();
+    // nv_app_state_init();
+    USB_power(0);
+    USB_power(1);
+#ifdef HAVE_BLE
+    // Erase globals that may inherit values from exchange
+    MEMCLEAR(G_io_asynch_ux_callback);
+    // grab the current plane mode setting
+    G_io_app.plane_mode = os_setting_get(OS_SETTING_PLANEMODE, NULL, 0);
+    BLE_power(0, NULL);
+    BLE_power(1, NULL);
+#endif  // HAVE_BLE
+    app_main();
+}
+
 static void library_main_helper(hedera_libargs_t *args) {
     switch (args->command) {
-        PRINTF("command %d\n", args->command);
+        PRINTF("command v4 %d\n", args->command);
         case CHECK_ADDRESS:
             // ensure result is zero if an exception is thrown
-                if (handle_check_address(args->check_address) != 1) {
-                    app_exit();
-                }
-                break;
-        // case SIGN_TRANSACTION:
-        //     if (copy_transaction_parameters(args->create_transaction)) {
-        //         // never returns
-        //         start_app_from_lib();
-        //     }
-        // break;
-        case GET_PRINTABLE_AMOUNT:
-            if (swap_handle_get_printable_amount(args->get_printable_amount) != 1) {
-                app_exit();
+            args->check_address->result = 0;
+            args->check_address->result = handle_check_address(args->check_address);
+            PRINTF("AFTER handle_check_address\n");
+            break;
+        case SIGN_TRANSACTION:
+            if (copy_transaction_parameters(args->create_transaction)) {
+                // never returns
+                start_app_from_lib();
             }
+        break;
+        case GET_PRINTABLE_AMOUNT:
+            swap_handle_get_printable_amount(args->get_printable_amount);
             break;
         default:
             break;
@@ -156,6 +216,7 @@ static void library_main(hedera_libargs_t *args) {
                 if (!end) {
                     library_main_helper(args);
                 }
+                PRINTF("AFTER END_TRY\n");
                 os_lib_end();
             }
             FINALLY {

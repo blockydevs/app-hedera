@@ -1,7 +1,8 @@
+#include "swap_utils.h"
+
 #include <string.h>
 #include <limits.h>
 
-#include "swap_utils.h"
 #include "../utils.h"
 
 bool swap_str_to_u64(const uint8_t* src, size_t length, uint64_t* result) {

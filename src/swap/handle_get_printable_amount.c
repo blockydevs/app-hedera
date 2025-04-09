@@ -5,9 +5,6 @@
 #include "swap_utils.h"
 #include <utils.h>
 
-#define HEDERA_DECIMALS 9
-#define HEDERA_SIGN "HBAR"
-
 int print_amount(uint64_t amount, char *out, size_t out_length) {
     return print_token_amount(amount, HEDERA_SIGN, HEDERA_DECIMALS, out, out_length);
 }
