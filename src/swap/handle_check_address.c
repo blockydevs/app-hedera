@@ -48,8 +48,8 @@ int handle_check_address(const check_address_parameters_t *params) {
         return 0;
     }
 
-    uint8_t public_key[PUBKEY_LENGTH];
-    uint8_t public_key_str[RAW_PUBKEY_SIZE];
+    uint8_t public_key[128];
+    uint8_t public_key_str[128];
     derive_public_key(params->address_parameters,
                           public_key,
                           public_key_str);
