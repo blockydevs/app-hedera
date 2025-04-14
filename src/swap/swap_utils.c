@@ -1,7 +1,7 @@
 #include "swap_utils.h"
 
-#include <string.h>
 #include <limits.h>
+#include <string.h>
 
 #include "../utils.h"
 
