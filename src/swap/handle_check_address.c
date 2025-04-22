@@ -1,16 +1,15 @@
 #ifdef HAVE_SWAP
 
 #include "handle_check_address.h"
-#include "../get_public_key.h"
+
 #include <ctype.h>
 #include <string.h>
 
-static void derive_public_key(const uint8_t *buffer,
-                             uint8_t public_key[RAW_PUBKEY_SIZE],
-                             uint8_t public_key_str[RAW_PUBKEY_SIZE]) {
-    uint32_t index = U4LE(buffer, 0);
+#include "../get_public_key.h"
 
-    hedera_get_pubkey(index, public_key);
+static void derive_public_key(uint8_t public_key[RAW_PUBKEY_SIZE],
+                              uint8_t public_key_str[RAW_PUBKEY_SIZE]) {
+    hedera_get_pubkey(ADMIN_OF_WALLET_DERIV_INDEX_PUBLIC_KEY, public_key);
 
     public_key_to_bytes(G_io_apdu_buffer, public_key);
     bin2hex(public_key_str, G_io_apdu_buffer, KEY_SIZE);
@@ -46,14 +45,19 @@ int handle_check_address(const check_address_parameters_t *params) {
 
     uint8_t public_key[RAW_PUBKEY_SIZE];
     uint8_t public_key_str[RAW_PUBKEY_SIZE];
-    derive_public_key(params->address_parameters,
-                          public_key,
-                          public_key_str);
+    derive_public_key(public_key, public_key_str);
 
     UNUSED(public_key);
 
-    if (strcmp(params->address_to_check, (char *) public_key_str) != 0) {
-        PRINTF("Address %s != %s\n", params->address_to_check, public_key_str);
+    uint8_t offset_0x = 0;
+    if (memcmp(params->address_to_check, "0x", 2) == 0) {
+        offset_0x = 2;
+    }
+
+    if (strcmp(params->address_to_check + offset_0x, (char *)public_key_str) !=
+        0) {
+        PRINTF("Address %s != %s\n", params->address_to_check + offset_0x,
+               public_key_str);
         return 0;
     }
 
