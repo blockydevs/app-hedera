@@ -40,12 +40,7 @@ void handle_get_public_key(uint8_t p1, uint8_t p2, uint8_t* buffer,
     if (buffer == NULL || len < sizeof(uint32_t)) {
         THROW(EXCEPTION_INTERNAL);
     }
-
-    if (len < 4) {
-        // We need at least 4 bytes for the key index
-        THROW(EXCEPTION_INTERNAL);
-    }
-
+    
     // Read Key Index (last 4 bytes of buffer)
     // The key index is the last 4 bytes of the buffer
     // It will work for both sending only index and full path
