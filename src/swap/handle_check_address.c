@@ -6,7 +6,7 @@
 #include <string.h>
 
 static void derive_public_key(const uint8_t *buffer,
-                             uint8_t public_key[PUBKEY_LENGTH],
+                             uint8_t public_key[RAW_PUBKEY_SIZE],
                              uint8_t public_key_str[RAW_PUBKEY_SIZE]) {
     uint32_t index = U4LE(buffer, 0);
 
@@ -18,7 +18,6 @@ static void derive_public_key(const uint8_t *buffer,
 }
 
 int handle_check_address(const check_address_parameters_t *params) {
-
     if (params->coin_configuration != NULL || params->coin_configuration_length != 0) {
         PRINTF("No coin_configuration expected\n");
         return 0;
@@ -45,13 +44,12 @@ int handle_check_address(const check_address_parameters_t *params) {
         return 0;
     }
 
-    uint8_t public_key[PUBKEY_LENGTH];
+    uint8_t public_key[RAW_PUBKEY_SIZE];
     uint8_t public_key_str[RAW_PUBKEY_SIZE];
     derive_public_key(params->address_parameters,
                           public_key,
                           public_key_str);
 
-    // Only public_key_str is useful in this context
     UNUSED(public_key);
 
     if (strcmp(params->address_to_check, (char *) public_key_str) != 0) {

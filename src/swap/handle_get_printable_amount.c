@@ -11,7 +11,6 @@ int print_amount(uint64_t amount, char *out, size_t out_length) {
 
 
 int swap_handle_get_printable_amount(get_printable_amount_parameters_t* params) {
-    PRINTF("TODO: swap_handle_check_address\n");
     MEMCLEAR(params->printable_amount);
 
     if (params->coin_configuration != NULL || params->coin_configuration_length != 0) {
@@ -29,8 +28,6 @@ int swap_handle_get_printable_amount(get_printable_amount_parameters_t* params) 
         PRINTF("print_amount failed");
         return 0;
     }
-
-    PRINTF("Amount %s\n", params->printable_amount);
 
     return 1;
 }
