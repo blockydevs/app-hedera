@@ -50,10 +50,7 @@ int handle_check_address(const check_address_parameters_t *params) {
     // The key index is the last 4 bytes of the buffer
     // It will work for both sending only index and full path
     uint32_t index = U4BE(params->address_parameters, params->address_parameters_length - 4);
-    uint8_t hardened = (index & 0x80000000) != 0;
-    uint32_t index_no_hardened = index & 0x7FFFFFFF;
-    
-    PRINTF("Deriving public key for index %u, hardened=%u\n", index_no_hardend,hardened);
+    PRINTF("Deriving public key for index %u, hardened=%u\n", index & 0x7FFFFFFF, (index & 0x80000000) != 0);
     derive_public_key(index, public_key, public_key_str);
 
     UNUSED(public_key);
