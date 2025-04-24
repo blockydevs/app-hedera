@@ -1,11 +1,10 @@
 #ifdef HAVE_SWAP
 
 #include "handle_check_address.h"
-
+#include "../get_public_key.h"
 #include <ctype.h>
 #include <string.h>
 
-#include "../get_public_key.h"
 
 static void derive_public_key(uint32_t index, uint8_t public_key[RAW_PUBKEY_SIZE],
                               uint8_t public_key_str[RAW_PUBKEY_SIZE]) {
