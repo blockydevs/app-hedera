@@ -18,9 +18,6 @@ static void derive_public_key(const uint8_t *buffer,
 }
 
 int handle_check_address(const check_address_parameters_t *params) {
-    PRINTF("Inside Solana handle_check_address\n");
-    PRINTF("Params on the address %d\n", (unsigned int) params);
-    PRINTF("params->address_parameters %u\n", params->address_parameters);
 
     if (params->coin_configuration != NULL || params->coin_configuration_length != 0) {
         PRINTF("No coin_configuration expected\n");
@@ -56,8 +53,6 @@ int handle_check_address(const check_address_parameters_t *params) {
 
     // Only public_key_str is useful in this context
     UNUSED(public_key);
-
-    PRINTF("public_key_str %s\n", public_key_str);
 
     if (strcmp(params->address_to_check, (char *) public_key_str) != 0) {
         PRINTF("Address %s != %s\n", params->address_to_check, public_key_str);
