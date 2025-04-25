@@ -346,6 +346,33 @@ def test_hedera_transfer_token_ok(backend, firmware, scenario_navigator):
     ):
         navigation_helper_confirm(firmware, scenario_navigator)
 
+def test_hedera_transfer_token_long_address_ok(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    conf = crypto_transfer_token_conf(
+        token_shardNum=9223372036854775806,
+        token_realmNum=8223372036854775805,
+        token_tokenNum=7223372036854775804,
+        sender_shardNum=57,
+        sender_realmNum=58,
+        sender_accountNum=59,
+        recipient_shardNum=100,
+        recipient_realmNum=101,
+        recipient_accountNum=102,
+        amount=1234567890,
+        decimals=9,
+    )
+
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=5,
+        memo="this_is_very_long_alice_bob_harry_potter_winston_smith_romeo_and_julia_hedera_test_exactly_100_memo",
+        conf=conf,
+    ):
+        navigation_helper_confirm(firmware, scenario_navigator)
+
 
 def test_hedera_transfer_known_token_1_ok(backend, firmware, scenario_navigator):
     hedera = HederaClient(backend)
