@@ -707,8 +707,8 @@ static void review_choice(bool confirm) {
 static nbgl_contentTagValue_t infos[7];
 // Content of the review flow
 static nbgl_contentTagValueList_t content;
-static char review_start_title[64];
-static char review_final_title[64];
+static char review_start_title[128];
+static char review_final_title[128];
 
 static void create_transaction_flow(void) {
     uint8_t index = 0;

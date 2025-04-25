@@ -88,9 +88,8 @@ typedef struct sign_tx_context_s {
     uint32_t key_index;
     uint8_t transfer_to_index;
     uint8_t transfer_from_index;
-
     // Transaction Summary
-    char summary_line_1[DISPLAY_SIZE + 1];
+    char summary_line_1[LONG_LINE_DISPLAY_SIZE + 1];
     char summary_line_2[DISPLAY_SIZE + 1];
 
 #if defined(TARGET_NANOS)

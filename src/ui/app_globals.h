@@ -4,6 +4,8 @@
 
 #define BIP32_PATH 5
 #define DISPLAY_SIZE 18 // characters @ 11pt sys font
+#define LONG_LINE_DISPLAY_SIZE 80 // characters @ EPD font, on Nano{S,SP,X} screen it will be shorted (not trimmed)
+
 
 #define RAW_PUBKEY_SIZE 65
 #define MAX_TX_SIZE 512
