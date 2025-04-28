@@ -81,6 +81,8 @@ void handle_transaction_body() {
     MEMCLEAR(st_ctx.token_decimals);
     MEMCLEAR(st_ctx.token_name);
     MEMCLEAR(st_ctx.token_ticker);
+    MEMCLEAR(st_ctx.token_address_str);
+    MEMCLEAR(st_ctx.token_known);
 #endif
 
     // Step 1, Unknown Type, Screen 1 of 1
@@ -123,6 +125,7 @@ void handle_transaction_body() {
             reformat_updated_account();
 #endif
             break;
+            
         case Hedera_TransactionBody_tokenAssociate_tag:
             st_ctx.type = Associate;
             reformat_summary("Associate Token");
@@ -252,6 +255,7 @@ void handle_transaction_body() {
             break;
 
         default:
+            // Unsupported
             THROW(EXCEPTION_MALFORMED_APDU);
             break;
     }
@@ -284,7 +288,6 @@ void handle_sign_transaction(uint8_t p1, uint8_t p2, uint8_t* buffer,
     // Oops Oof Owie
     if (raw_transaction_length > MAX_TX_SIZE ||
         raw_transaction_length > (int)buffer - 4 || buffer == NULL) {
-        
         THROW(EXCEPTION_MALFORMED_APDU);
     }
 
@@ -297,7 +300,6 @@ void handle_sign_transaction(uint8_t p1, uint8_t p2, uint8_t* buffer,
     // Sign Transaction
     if (!hedera_sign(st_ctx.key_index, raw_transaction, raw_transaction_length,
                      G_io_apdu_buffer)) {
-        
         THROW(EXCEPTION_MALFORMED_APDU);
     }
 
