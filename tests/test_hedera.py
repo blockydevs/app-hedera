@@ -415,7 +415,7 @@ def test_hedera_transfer_known_token_wrong_decimal(backend, firmware, scenario_n
         recipient_shardNum=100,
         recipient_realmNum=101,
         recipient_accountNum=102,
-        amount=1,  #Should be 3.14 PACK
+        amount=1,  #Should be 0.000001 PACK
         decimals=9,
     )
 
