@@ -44,6 +44,9 @@ ICON_NANOSP = icons/nanox_app_hedera.gif
 ICON_STAX = icons/stax_app_hedera.gif
 ICON_FLEX = icons/flex_app_hedera.gif
 
+
+
+
 # Application allowed derivation curves.
 CURVE_APP_LOAD_PARAMS = ed25519 secp256k1
 
@@ -100,8 +103,6 @@ DEFINES   += U2F_PROXY_MAGIC=\"BOIL\"
 # Allow usage of function from lib_standard_app/crypto_helpers.c
 APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/crypto_helpers.c
 
-APP_LOAD_PARAMS += --appFlags 0x200 $(COMMON_LOAD_PARAMS)
-
 # Additional include paths
 INCLUDES_PATH += ${BOLOS_SDK}/lib_standard_app $(NANOPB_DIR) .
 
@@ -143,4 +144,6 @@ check:
 		$(addprefix -D, $(DEFINES)) \
 		$(addprefix -I, $(INCLUDES_PATH))
 
+
 include $(BOLOS_SDK)/Makefile.standard_app
+APP_FLAGS_APP_LOAD_PARAMS = 0x200
