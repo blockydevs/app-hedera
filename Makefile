@@ -44,9 +44,6 @@ ICON_NANOSP = icons/nanox_app_hedera.gif
 ICON_STAX = icons/stax_app_hedera.gif
 ICON_FLEX = icons/flex_app_hedera.gif
 
-
-
-
 # Application allowed derivation curves.
 CURVE_APP_LOAD_PARAMS = ed25519 secp256k1
 
@@ -145,5 +142,5 @@ check:
 		$(addprefix -I, $(INCLUDES_PATH))
 
 
-include $(BOLOS_SDK)/Makefile.standard_app
 APP_FLAGS_APP_LOAD_PARAMS = 0x200
+include $(BOLOS_SDK)/Makefile.standard_app
