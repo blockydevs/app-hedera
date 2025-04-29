@@ -100,6 +100,8 @@ DEFINES   += U2F_PROXY_MAGIC=\"BOIL\"
 # Allow usage of function from lib_standard_app/crypto_helpers.c
 APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/crypto_helpers.c
 
+APP_LOAD_PARAMS += --appFlags 0x200 $(COMMON_LOAD_PARAMS)
+
 # Additional include paths
 INCLUDES_PATH += ${BOLOS_SDK}/lib_standard_app $(NANOPB_DIR) .
 
