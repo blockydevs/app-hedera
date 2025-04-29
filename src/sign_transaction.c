@@ -311,7 +311,6 @@ void handle_sign_transaction(uint8_t p1, uint8_t p2, uint8_t* buffer,
     if (!pb_decode(&stream, Hedera_TransactionBody_fields,
                    &st_ctx.transaction)) {
         // Oh no couldn't ...
-        
         THROW(EXCEPTION_MALFORMED_APDU);
     }
 
