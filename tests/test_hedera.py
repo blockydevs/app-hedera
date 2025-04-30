@@ -68,7 +68,7 @@ def test_hedera_get_public_key_refused(backend, firmware, navigator, test_name):
     if not firmware.is_nano:
         with hedera.get_public_key_confirm(0):
             backend.raise_policy = RaisePolicy.RAISE_NOTHING
-            nav_ins = [NavInsID.USE_CASE_CHOICE_CONFIRM,
+            nav_ins = [NavInsID.USE_CASE_REVIEW_NEXT,
                        NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CANCEL]
             navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH, test_name + "_2", nav_ins)
 
