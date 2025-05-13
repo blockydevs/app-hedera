@@ -121,7 +121,7 @@ void reformat_summary_send_token(void) {
 }
 
 void reformat_summary_send_known_token(void) {
-    hedera_safe_printf(st_ctx.summary_line_1, "Send %s", st_ctx.token_name);
+    hedera_safe_printf(st_ctx.summary_line_1, "Send tokens");
 }
 
 // TITLES
