@@ -142,6 +142,3 @@ check:
 		$(addprefix -I, $(INCLUDES_PATH))
 
 include $(BOLOS_SDK)/Makefile.standard_app
-
-# Auto set flags are wrong, we need to set them manually
-APP_FLAGS_APP_LOAD_PARAMS = 0x200
