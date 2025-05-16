@@ -140,7 +140,7 @@ void handle_transaction_body() {
             
         case Hedera_TransactionBody_tokenAssociate_tag:
             st_ctx.type = Associate;
-            reformat_summary("Associate Token");
+            reformat_summary("associate token");
 
 #if !defined(TARGET_NANOS)
             token_addr_t associate_token_address = {
