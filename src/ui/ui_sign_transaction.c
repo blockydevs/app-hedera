@@ -745,10 +745,26 @@ static void create_transaction_flow(void) {
 
     switch (st_ctx.type) {
         case Verify:
-            // FALLTHROUGH
-        case Associate:
             infos[index].item = st_ctx.senders_title;
             infos[index].value = st_ctx.senders;
+            ++index;
+            break;
+        case Associate:
+            if (st_ctx.token_known) {
+                infos[index].item = "Token";
+                infos[index].value = st_ctx.token_name;
+                ++index;
+                infos[index].item = "Token ID";
+                infos[index].value = st_ctx.token_address_str;
+                ++index;
+            }
+            else {
+                infos[index].item = "Token";
+                infos[index].value = st_ctx.token_address_str;
+                ++index;
+            }
+            infos[index].item = "Max fees";
+            infos[index].value = st_ctx.fee;
             ++index;
             break;
         case Create:
