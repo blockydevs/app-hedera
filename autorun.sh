@@ -28,6 +28,7 @@ if [[ "$1" == "tests" ]]; then
     # Run tests for each device
     for device in "${DEVICES[@]}"; do
       echo "Running tests for $device..."
+      #pytest --tb=short -v --device "$device" -k "token_3" --golden_run
       pytest --tb=short -v --device "$device" -s 2>../debug.log
     done
   fi
