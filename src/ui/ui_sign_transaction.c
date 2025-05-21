@@ -662,7 +662,7 @@ UX_STEP_NOCB(token_addr_step, bnnn_paging,
              {.title = "Token ID", .text = (char*)st_ctx.token_address_str});
 
 UX_STEP_NOCB(token_name_step, bnnn_paging,
-             {.title = "Associate Token", .text = (char*)st_ctx.token_name});
+             {.title = "Associate Token", .text = (char*)st_ctx.token_ticker});
 
 UX_STEP_NOCB(token_name_addr_step, bnnn_paging,
              {.title = "Associate Token", .text = (char*)st_ctx.senders});
@@ -752,7 +752,7 @@ static void create_transaction_flow(void) {
         case Associate:
             if (st_ctx.token_known) {
                 infos[index].item = "Token";
-                infos[index].value = st_ctx.token_name;
+                infos[index].value = st_ctx.token_ticker;
                 ++index;
                 infos[index].item = "Token ID";
                 infos[index].value = st_ctx.token_address_str;
