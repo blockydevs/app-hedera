@@ -112,11 +112,6 @@ void reformat_summary(const char *summary) {
 void reformat_summary_send_token(void) {
     hedera_safe_printf(st_ctx.summary_line_1, "send tokens");   
 }
-
-void reformat_summary_send_known_token(void) {
-    hedera_safe_printf(st_ctx.summary_line_1, "send tokens");
-}
-
 // TITLES
 
 #if defined(TARGET_NANOS)
