@@ -1,18 +1,6 @@
 #include "token_lookup.h"
-
+#include "cal.h"
 #include <string.h>
-
-static const token_info_t token_info_table[] = {
-    {{0, 0, 456858}, "USDC", "hUSDC", 6},
-    {{0, 0, 731861}, "SAUCE", "SAUCE", 6},
-    {{0, 0, 3716059}, "Dovu", "DOVU", 8},
-    {{0, 0, 4794920}, "PACK", "PACK", 6},
-    {{0, 0, 7893707}, "GIB", "GIB", 8},
-    {{0, 0, 5022567}, "hBARK", "HBARK", 0},
-};
-
-static const size_t token_info_table_size =
-    sizeof(token_info_table) / sizeof(token_info_table[0]);
 
 bool token_info_get_by_address(const token_addr_t address,
                                char ticker[MAX_TICKER_LENG],
