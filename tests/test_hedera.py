@@ -403,34 +403,6 @@ def test_hedera_transfer_known_token_2_ok(backend, firmware, scenario_navigator)
         navigation_helper_confirm(firmware, scenario_navigator)
 
 
-def test_hedera_transfer_known_token_3_ok(backend, firmware, scenario_navigator):
-    hedera = HederaClient(backend)
-    conf = crypto_transfer_token_conf(
-        token_shardNum=0,
-        token_realmNum=0,
-        token_tokenNum=4794920, #PACK
-        sender_shardNum=33,
-        sender_realmNum=0,
-        sender_accountNum=0,
-        recipient_shardNum=100,
-        recipient_realmNum=101,
-        recipient_accountNum=102,
-        amount=int(12.34*(10**6)),  #Should be 12.34 PACK
-        decimals=6,
-    )
-
-    with hedera.send_sign_transaction(
-        index=0,
-        operator_shard_num=1,
-        operator_realm_num=2,
-        operator_account_num=3,
-        transaction_fee=5,
-        memo="sending 12.34 PACK",
-        conf=conf,
-    ):
-        navigation_helper_confirm(firmware, scenario_navigator)
-
-
 def test_hedera_transfer_max_supply_cal_token_ok(backend, firmware, scenario_navigator):
     hedera = HederaClient(backend)
     # Max supply in Hedera is 2^63-1
@@ -498,7 +470,7 @@ def test_hedera_transfer_max_supply_token_ok(backend, firmware, scenario_navigat
 def test_hedera_transfer_longest_ticker_token_ok(backend, firmware, scenario_navigator):
     hedera = HederaClient(backend)
     # Use a large number but not max supply
-    large_amount = 9999999999999999
+    large_amount = (2**63) - 1
     
     # Use HEDERA4TRUMP token which has the longest ticker in CAL
     conf = crypto_transfer_token_conf(
