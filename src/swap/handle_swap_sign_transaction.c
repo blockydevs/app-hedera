@@ -106,7 +106,7 @@ bool swap_check_validity() {
         PRINTF("Gas fee on Transaction is different from validated package.\n");
         PRINTF("Gas fee on Transaction: %d\n", (uint32_t) st_ctx.transaction.transactionFee);
         PRINTF("Gas fee on Swap: %d\n", (uint32_t) G_swap_validated.fee);
-        //return false;
+        return false;
     }
 
     if (memcmp(st_ctx.recipients, G_swap_validated.recipient, (18 * 2) + 1) != 0) {
