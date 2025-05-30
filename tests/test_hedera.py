@@ -20,19 +20,18 @@ from .utils import ROOT_SCREENSHOT_PATH, navigation_helper_confirm, navigation_h
 def test_hedera_get_public_key_ok(backend, firmware, navigator, test_name):
     hedera = HederaClient(backend)
     values = [
-        (0, "78be747e6894ee5f965e3fb0e4c1628af2f9ae0d94dc01d9b9aab75484c3184b"),
-        (11095, "644ef690d394e8140fa278273913425bc83c59067a392a9e7f703ead4973caf8"),
-        (294967295, "02357008e57f96bb250f789c63eb3a241c1eae034d461468b76b8174a59bdc9b"),
-        (
-            2294967295,
-            "2cbd40ac0a3e25a315aed7e211fd0056127075dfa4ba1717a7a047a2030b5efb",
-        ),
+        ("m/44'/3030'", "78be747e6894ee5f965e3fb0e4c1628af2f9ae0d94dc01d9b9aab75484c3184b"),
+        ("m/44'/3030'/0'/0'/11095'", "644ef690d394e8140fa278273913425bc83c59067a392a9e7f703ead4973caf8"),
+        ("m/44'/3030'/294967295'", "02357008e57f96bb250f789c63eb3a241c1eae034d461468b76b8174a59bdc9b"),
+        ("m/44'/3030'/2294967295'/0'", "78be747e6894ee5f965e3fb0e4c1628af2f9ae0d94dc01d9b9aab75484c3184b"),
+        ("m/11095", "644ef690d394e8140fa278273913425bc83c59067a392a9e7f703ead4973caf8"),
+
     ]
-    for i, (index, key) in enumerate(values):
-        from_public_key = hedera.get_public_key_non_confirm(index).data
+    for i, (path_str, key) in enumerate(values):
+        from_public_key = hedera.get_public_key_non_confirm(path_str).data
         backend.wait_for_home_screen()
         assert from_public_key.hex() == key
-        with hedera.get_public_key_confirm(index):
+        with hedera.get_public_key_confirm(path_str):
             if firmware.device == "nanos":
                 nav_ins = [NavInsID.RIGHT_CLICK]
             elif backend.firmware.device.startswith("nano"):
@@ -49,7 +48,7 @@ def test_hedera_get_public_key_ok(backend, firmware, navigator, test_name):
 
 def test_hedera_get_public_key_refused(backend, firmware, navigator, test_name):
     hedera = HederaClient(backend)
-    with hedera.get_public_key_confirm(0):
+    with hedera.get_public_key_confirm("44'/3030'/0'"):
         if firmware.device == "nanos":
             nav_ins = [NavInsID.LEFT_CLICK]
         elif backend.firmware.device.startswith("nano"):
@@ -66,7 +65,7 @@ def test_hedera_get_public_key_refused(backend, firmware, navigator, test_name):
     assert rapdu.status == ErrorType.EXCEPTION_USER_REJECTED
 
     if not firmware.is_nano:
-        with hedera.get_public_key_confirm(0):
+        with hedera.get_public_key_confirm("44'/3030'/0'"):
             backend.raise_policy = RaisePolicy.RAISE_NOTHING
             nav_ins = [NavInsID.USE_CASE_REVIEW_NEXT,
                        NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CANCEL]
@@ -80,7 +79,7 @@ def test_hedera_crypto_create_account_ok(backend, firmware, scenario_navigator):
     hedera = HederaClient(backend)
     conf = crypto_create_account_conf(initialBalance=5)
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="44'/3030'/1'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -95,7 +94,7 @@ def test_hedera_crypto_create_account_refused(backend, firmware, scenario_naviga
     hedera = HederaClient(backend)
     conf = crypto_create_account_conf(initialBalance=5)
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="44'/3030'/2'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -116,7 +115,7 @@ def test_hedera_crypto_create_account_stake_account_ok(backend, firmware, scenar
         initialBalance=5, stakeTargetAccount=666, declineRewards=True
     )
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="44'/3030'/3'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -133,7 +132,7 @@ def test_hedera_crypto_create_account_stake_account_refused(backend, firmware, s
         initialBalance=5, stakeTargetAccount=777, declineRewards=False
     )
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="44'/3030'/4'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -154,7 +153,7 @@ def test_hedera_crypto_create_account_stake_node_ok(backend, firmware, scenario_
         initialBalance=5, stakeTargetNode=4, declineRewards=True
     )
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="44'/3030'/5'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -171,7 +170,7 @@ def test_hedera_crypto_create_account_stake_node_refused(backend, firmware, scen
         initialBalance=5, stakeTargetNode=3, declineRewards=False
     )
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/10'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -192,7 +191,7 @@ def test_hedera_crypto_update_account_ok(backend, firmware, scenario_navigator):
         targetShardNum=6, targetRealmNum=54, targetAccountNum=6789
     )
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/6'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -209,7 +208,7 @@ def test_hedera_crypto_update_account_refused(backend, firmware, scenario_naviga
         targetShardNum=6, targetRealmNum=54, targetAccountNum=6789
     )
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/2'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -239,7 +238,7 @@ def test_hedera_crypto_update_account_stake_account_ok(backend, firmware, scenar
         declineRewards=True,
     )
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/3'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -260,7 +259,7 @@ def test_hedera_crypto_update_account_stake_account_refused(backend, firmware, s
         declineRewards=False,
     )
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/4'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -285,7 +284,7 @@ def test_hedera_crypto_update_account_stake_node_ok(backend, firmware, scenario_
         declineRewards=True,
     )
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/5'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -306,7 +305,7 @@ def test_hedera_crypto_update_account_stake_node_refused(backend, firmware, scen
         declineRewards=False,
     )
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/0'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -338,7 +337,7 @@ def test_hedera_transfer_token_ok(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/6'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -366,7 +365,7 @@ def test_hedera_transfer_token_refused(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/7'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -394,7 +393,7 @@ def test_hedera_transfer_hbar_ok(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/8'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -418,7 +417,7 @@ def test_hedera_transfer_hbar_refused(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/9'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -445,7 +444,7 @@ def test_hedera_token_associate_ok(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/0'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -468,7 +467,7 @@ def test_hedera_token_associate_refused(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/0'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -495,7 +494,7 @@ def test_hedera_token_dissociate_ok(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/0'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -518,7 +517,7 @@ def test_hedera_token_dissociate_refused(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/0'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -540,7 +539,7 @@ def test_hedera_token_burn_ok(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="44'/3030'/0'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -558,7 +557,7 @@ def test_hedera_token_burn_refused(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/0'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -580,7 +579,7 @@ def test_hedera_token_mint_ok(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/0'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -598,7 +597,7 @@ def test_hedera_token_mint_refused(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/0'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -620,7 +619,7 @@ def test_hedera_transfer_verify_ok(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="44'/3030'/0'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,
@@ -638,7 +637,7 @@ def test_hedera_transfer_verify_refused(backend, firmware, scenario_navigator):
     )
 
     with hedera.send_sign_transaction(
-        index=0,
+        deriv_path="m/44'/3030'/0'",
         operator_shard_num=1,
         operator_realm_num=2,
         operator_account_num=3,

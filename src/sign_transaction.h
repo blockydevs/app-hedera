@@ -85,6 +85,7 @@ may be skipped or modified (as described above) from the original transfer flow.
 
 typedef struct sign_tx_context_s {
     // ui common
+    uint32_t deriv_path[MAX_DERIV_PATH_LEN];
     uint32_t key_index;
     uint8_t transfer_to_index;
     uint8_t transfer_from_index;
@@ -156,5 +157,7 @@ typedef struct sign_tx_context_s {
     // Parsed transaction
     Hedera_TransactionBody transaction;
 } sign_tx_context_t;
+
+#define SIGN_DERIV_PATH_LENGTH 3
 
 extern sign_tx_context_t st_ctx;

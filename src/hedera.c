@@ -5,23 +5,13 @@
 #include <string.h>
 
 #include "crypto_helpers.h"
+#include "get_public_key.h"
 #include "utils.h"
 
-static void hedera_set_path(uint32_t index, uint32_t path[static 5]) {
-    path[0] = PATH_ZERO;
-    path[1] = PATH_ONE;
-    path[2] = PATH_TWO;
-    path[3] = PATH_THREE;
-    path[4] = PATH_FOUR;
-}
-
-bool hedera_get_pubkey(uint32_t index, uint8_t raw_pubkey[static RAW_PUBKEY_SIZE]) {
-    uint32_t path[5];
-
-    hedera_set_path(index, path);
+bool hedera_get_pubkey(uint32_t path[static MAX_DERIV_PATH_LEN], uint8_t raw_pubkey[static RAW_PUBKEY_SIZE]) {
 
     if (CX_OK != bip32_derive_with_seed_get_pubkey_256(
-                     HDW_ED25519_SLIP10, CX_CURVE_Ed25519, path, 5, raw_pubkey,
+                     HDW_ED25519_SLIP10, CX_CURVE_Ed25519, path, MAX_DERIV_PATH_LEN, raw_pubkey,
                      NULL, CX_SHA512, NULL, 0)) {
         return false;
     }
@@ -29,15 +19,12 @@ bool hedera_get_pubkey(uint32_t index, uint8_t raw_pubkey[static RAW_PUBKEY_SIZE
     return true;
 }
 
-bool hedera_sign(uint32_t index, const uint8_t* tx, uint8_t tx_len,
+bool hedera_sign(uint32_t path[static MAX_DERIV_PATH_LEN], const uint8_t* tx, uint8_t tx_len,
                  /* out */ uint8_t* result) {
-    uint32_t path[5];
     size_t sig_len = 64;
 
-    hedera_set_path(index, path);
-
     if (CX_OK != bip32_derive_with_seed_eddsa_sign_hash_256(
-                     HDW_ED25519_SLIP10, CX_CURVE_Ed25519, path, 5, CX_SHA512,
+                     HDW_ED25519_SLIP10, CX_CURVE_Ed25519, path, MAX_DERIV_PATH_LEN, CX_SHA512,
                      tx,     // hash (really message)
                      tx_len, // hash length (really message length)
                      result, // signature

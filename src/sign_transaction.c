@@ -1,6 +1,6 @@
 #include "handle_swap_sign_transaction.h"
 #include "sign_transaction.h"
-
+#include "get_public_key.h"
 #include <swap_entrypoints.h>
 #include <swap_utils.h>
 
@@ -302,22 +302,25 @@ void handle_sign_transaction(uint8_t p1, uint8_t p2, uint8_t* buffer,
 
     // Raw Tx
     uint8_t raw_transaction[MAX_TX_SIZE];
-    int raw_transaction_length = len - 4;
+    const int byte_deriv_path_length = SIGN_DERIV_PATH_LENGTH*4;
+    int raw_transaction_length = len - byte_deriv_path_length;
 
     // Oops Oof Owie
     if (raw_transaction_length > MAX_TX_SIZE ||
-        raw_transaction_length > (int)buffer - 4 || buffer == NULL) {
+        raw_transaction_length > (int)buffer - byte_deriv_path_length || buffer == NULL) {
         THROW(EXCEPTION_MALFORMED_APDU);
     }
 
     // Key Index
-    st_ctx.key_index = U4LE(buffer, 0);
+    if (get_key_index_from_buffer(buffer, byte_deriv_path_length, st_ctx.deriv_path, &st_ctx.key_index) != 0) {
+        THROW(EXCEPTION_MALFORMED_APDU);
+    }
 
     // copy raw transaction
-    memmove(raw_transaction, (buffer + 4), raw_transaction_length);
+    memmove(raw_transaction, (buffer + byte_deriv_path_length), raw_transaction_length);
 
     // Sign Transaction
-    if (!hedera_sign(st_ctx.key_index, raw_transaction, raw_transaction_length,
+    if (!hedera_sign(st_ctx.deriv_path, raw_transaction, raw_transaction_length,
                      G_io_apdu_buffer)) {
         THROW(EXCEPTION_MALFORMED_APDU);
     }

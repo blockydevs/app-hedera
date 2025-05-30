@@ -37,20 +37,39 @@ def to_zigzag(n):
     return n + n + (n < 0)
 
 
+def bip32_path_str_to_bytes(path_str: str) -> bytes:
+    """
+    Convert a BIP32 path string like "m/44'/3030'/0'" or "44'/3030'/0'" to bytes (little-endian, 4 bytes per component).
+    Hardened components must end with a single quote (').
+    """
+    path_str = path_str.strip()
+    if path_str.startswith('m/'):  # Remove leading 'm/' if present
+        path_str = path_str[2:]
+    components = path_str.split('/')
+    result = b''
+    for comp in components:
+        if comp.endswith("'"):
+            val = int(comp[:-1]) | 0x80000000
+        else:
+            val = int(comp)
+        result += val.to_bytes(4, 'little')
+    return result
+
+
 class HederaClient:
     client: BackendInterface
 
     def __init__(self, client):
         self._client = client
 
-    def get_public_key_non_confirm(self, index: int) -> RAPDU:
-        index_b = index.to_bytes(4, "little")
-        return self._client.exchange(CLA, INS.INS_GET_PUBLIC_KEY, P1_NON_CONFIRM, 0, index_b)
+    def get_public_key_non_confirm(self, path_str: str) -> RAPDU:
+        path_bytes = bip32_path_str_to_bytes(path_str)
+        return self._client.exchange(CLA, INS.INS_GET_PUBLIC_KEY, P1_NON_CONFIRM, 0, path_bytes)
 
     @contextmanager
-    def get_public_key_confirm(self, index: int) -> Generator[None, None, None]:
-        index_b = index.to_bytes(4, "little")
-        with self._client.exchange_async(CLA, INS.INS_GET_PUBLIC_KEY, P1_CONFIRM, 0, index_b):
+    def get_public_key_confirm(self, path_str: str) -> Generator[None, None, None]:
+        path_bytes = bip32_path_str_to_bytes(path_str)
+        with self._client.exchange_async(CLA, INS.INS_GET_PUBLIC_KEY, P1_CONFIRM, 0, path_bytes):
             sleep(0.5)
             yield
 
@@ -59,7 +78,7 @@ class HederaClient:
 
     @contextmanager
     def send_sign_transaction(self,
-                              index: int,
+                              deriv_path: str,
                               operator_shard_num: int,
                               operator_realm_num: int,
                               operator_account_num: int,
@@ -73,8 +92,9 @@ class HederaClient:
                                          transaction_fee,
                                          memo,
                                          conf)
-
-        payload = index.to_bytes(4, "little") + transaction
+        path_bytes = bip32_path_str_to_bytes(deriv_path)
+        print("DERIV PATH: ", path_bytes)
+        payload = path_bytes + transaction
 
         with self._client.exchange_async(CLA, INS.INS_SIGN_TRANSACTION, P1_CONFIRM, 0, payload):
             sleep(0.5)

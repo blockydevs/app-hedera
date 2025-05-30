@@ -6,9 +6,9 @@
 #include <string.h>
 
 
-static void derive_public_key(uint32_t index, uint8_t public_key[RAW_PUBKEY_SIZE],
+static void derive_public_key(uint32_t path[static MAX_DERIV_PATH_LEN], uint8_t public_key[RAW_PUBKEY_SIZE],
                               uint8_t public_key_str[RAW_PUBKEY_SIZE]) {
-    hedera_get_pubkey(index, public_key);
+    hedera_get_pubkey(path, public_key);
  
 
     public_key_to_bytes(G_io_apdu_buffer, public_key);
@@ -45,11 +45,12 @@ int handle_check_address(const check_address_parameters_t *params) {
     uint8_t public_key[RAW_PUBKEY_SIZE];
     uint8_t public_key_str[RAW_PUBKEY_SIZE];
     
-    // Read Key Index (last 4 bytes of buffer)
-    // The key index is the last 4 bytes of the buffer
-    // It will work for both sending only index and full path
-    uint32_t index = U4BE(params->address_parameters, params->address_parameters_length - 4);
-    derive_public_key(index, public_key, public_key_str);
+    // Derive public key
+    uint32_t path[MAX_DERIV_PATH_LEN];
+    if (get_key_index_from_buffer(params->address_parameters, params->address_parameters_length, path, NULL) != 0) {
+        return 0;
+    }
+    derive_public_key(path, public_key, public_key_str);
 
     UNUSED(public_key);
 
