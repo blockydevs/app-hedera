@@ -312,7 +312,7 @@ void handle_sign_transaction(uint8_t p1, uint8_t p2, uint8_t* buffer,
     }
 
     // Key Index
-    if (get_key_index_from_buffer(buffer, byte_deriv_path_length, st_ctx.deriv_path, &st_ctx.key_index) != 0) {
+    if (parse_derivation_path(buffer, byte_deriv_path_length, st_ctx.deriv_path, &st_ctx.key_index) != 0) {
         THROW(EXCEPTION_MALFORMED_APDU);
     }
 

@@ -47,7 +47,7 @@ int handle_check_address(const check_address_parameters_t *params) {
     
     // Derive public key
     uint32_t path[MAX_DERIV_PATH_LEN];
-    if (get_key_index_from_buffer(params->address_parameters, params->address_parameters_length, path, NULL) != 0) {
+    if (parse_derivation_path(params->address_parameters, params->address_parameters_length, path, NULL) != 0) {
         return 0;
     }
     derive_public_key(path, public_key, public_key_str);

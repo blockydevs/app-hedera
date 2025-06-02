@@ -19,4 +19,8 @@
     },
     "C_Cpp.dimInactiveRegions": false,
     "C_Cpp.errorSquiggles": "enabled",
+    "ledgerDevTools.appSettings": {
+      "selectedUseCase": "release",
+      "selectedVariant": "hedera"
+    },
 }

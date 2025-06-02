@@ -33,6 +33,6 @@ extern get_public_key_context_t gpk_ctx;
 // It could parse single index or full derivation path (two to five elements)
 // If buffer is empty it will use default derivation path
 // It returns 0 if it successfully parsed the derivation path, -1 otherwise
-int get_key_index_from_buffer(const uint8_t *buffer, uint16_t len, uint32_t out_deriv_path[MAX_DERIV_PATH_LEN], uint32_t* out_key_index);
+int parse_derivation_path(const uint8_t *buffer, uint16_t len, uint32_t out_deriv_path[MAX_DERIV_PATH_LEN], uint32_t* out_key_index);
 
 #endif // GET_PUBLIC_KEY_H

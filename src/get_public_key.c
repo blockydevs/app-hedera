@@ -15,7 +15,7 @@ static void set_default_deriv_path_with_index(uint32_t out_deriv_path[MAX_DERIV_
     out_deriv_path[4] = PATH_FOUR | key_index;
 }
 
-int get_key_index_from_buffer(const uint8_t *buffer, uint16_t len, uint32_t out_deriv_path[MAX_DERIV_PATH_LEN], uint32_t* out_key_index) {
+int parse_derivation_path(const uint8_t *buffer, uint16_t len, uint32_t out_deriv_path[MAX_DERIV_PATH_LEN], uint32_t* out_key_index) {
     uint32_t deriv_path_len = len / 4;
     // If the buffer is empty, use the default derivation path
     if (buffer == NULL || deriv_path_len == 0) {
@@ -113,7 +113,7 @@ void handle_get_public_key(uint8_t p1, uint8_t p2, uint8_t* buffer,
     }
     
     // Read Key Index
-    if (get_key_index_from_buffer(buffer, len, gpk_ctx.deriv_path, &gpk_ctx.key_index) != 0) {
+    if (parse_derivation_path(buffer, len, gpk_ctx.deriv_path, &gpk_ctx.key_index) != 0) {
         THROW(EXCEPTION_MALFORMED_APDU);
     }
 
