@@ -49,6 +49,15 @@ int handle_check_address(const check_address_parameters_t *params) {
     // The key index is the last 4 bytes of the buffer
     // It will work for both sending only index and full path
     uint32_t index = U4BE(params->address_parameters, params->address_parameters_length - 4);
+
+    // Handle case for new app-exchange with old Ledger Live
+    // Where for every account we have m/44/3030 path without index
+    if (params->address_parameters_length == 9) {
+        if((U4BE(params->address_parameters, 1) | 0x80000000) == (PATH_ZERO) && (U4BE(params->address_parameters, 5) | 0x80000000) == (PATH_ONE)) {
+            index = 0;
+        }
+    }
+    PRINTF("Index: %d\n", index);
     derive_public_key(index, public_key, public_key_str);
 
     UNUSED(public_key);
