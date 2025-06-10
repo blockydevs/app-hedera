@@ -75,6 +75,21 @@ static bool is_token_transfer(void) {
     return (st_ctx.transaction.data.cryptoTransfer.tokenTransfers_count == 1);
 }
 
+static void validate_crypto_update(void) {
+
+    //Validate account is not 0.0.0
+    if (st_ctx.transaction.data.cryptoUpdateAccount.accountIDToUpdate.which_account == 3) {
+
+        int64_t account_num = st_ctx.transaction.data.cryptoUpdateAccount.accountIDToUpdate.account.accountNum;
+        int64_t realm_num = st_ctx.transaction.data.cryptoUpdateAccount.accountIDToUpdate.realmNum;
+        int64_t shard_num = st_ctx.transaction.data.cryptoUpdateAccount.accountIDToUpdate.shardNum;
+        
+        if (account_num == 0 && realm_num == 0 && shard_num == 0) {
+            THROW(EXCEPTION_MALFORMED_APDU);
+        }
+    }
+}
+
 void handle_transaction_body() {
     MEMCLEAR(st_ctx.summary_line_1);
     MEMCLEAR(st_ctx.summary_line_2);
@@ -128,6 +143,8 @@ void handle_transaction_body() {
             break;
 
         case Hedera_TransactionBody_cryptoUpdateAccount_tag:
+            validate_crypto_update(); // THROWs
+
             st_ctx.type = Update;
             reformat_summary("Update Account");
 
