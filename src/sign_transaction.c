@@ -89,11 +89,6 @@ static void validate_crypto_update(void) {
             THROW(EXCEPTION_MALFORMED_APDU);
         }
     }
-    
-    // Currently we don't support updating the key, because it requires double signing
-    if (st_ctx.transaction.data.cryptoUpdateAccount.has_key) {
-        THROW(EXCEPTION_MALFORMED_APDU);
-    }
 }
 
 void handle_transaction_body() {
