@@ -74,6 +74,11 @@ static void validate_crypto_update(void) {
             THROW(EXCEPTION_MALFORMED_APDU);
         }
     }
+    
+    // Currently we don't support updating the key, because it requires double signing
+    if (st_ctx.transaction.data.cryptoUpdateAccount.has_key) {
+        THROW(EXCEPTION_MALFORMED_APDU);
+    }
 }
 
 void handle_transaction_body() {
@@ -91,6 +96,12 @@ void handle_transaction_body() {
     MEMCLEAR(st_ctx.fee);
     MEMCLEAR(st_ctx.amount);
     MEMCLEAR(st_ctx.memo);
+    
+    // Clear crypto update specific fields
+    MEMCLEAR(st_ctx.auto_renew_period);
+    MEMCLEAR(st_ctx.expiration_time);
+    MEMCLEAR(st_ctx.receiver_sig_required);
+    MEMCLEAR(st_ctx.max_auto_token_assoc);
 #endif
 
     // Step 1, Unknown Type, Screen 1 of 1
@@ -133,6 +144,12 @@ void handle_transaction_body() {
             reformat_stake_target();
             reformat_collect_rewards();
             reformat_updated_account();
+            
+            // Format crypto update specific fields
+            reformat_auto_renew_period();
+            reformat_expiration_time();
+            reformat_receiver_sig_required();
+            reformat_max_automatic_token_associations();
 #endif
             break;
 

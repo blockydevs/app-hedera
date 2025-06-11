@@ -467,3 +467,61 @@ void reformat_memo(void) {
         st_ctx.memo, "%s",
         (st_ctx.transaction.memo[0] != '\0') ? st_ctx.transaction.memo : "");
 }
+
+void reformat_auto_renew_period(void) {
+    
+    if (st_ctx.type == Update && st_ctx.transaction.data.cryptoUpdateAccount.has_autoRenewPeriod) {
+        uint64_t seconds = st_ctx.transaction.data.cryptoUpdateAccount.autoRenewPeriod.seconds;
+        if (seconds >= 86400) {  // Show in days if >= 1 day
+            hedera_safe_printf(st_ctx.auto_renew_period, "%llu days", seconds / 86400);
+        } else if (seconds >= 3600) {  // Show in hours if >= 1 hour
+            hedera_safe_printf(st_ctx.auto_renew_period, "%llu hours", seconds / 3600);
+        } else {
+            hedera_safe_printf(st_ctx.auto_renew_period, "%llu seconds", seconds);
+        }
+    } else {
+        strcpy(st_ctx.auto_renew_period, "-");
+    }
+}
+
+void reformat_expiration_time(void) {
+    
+    if (st_ctx.type == Update && st_ctx.transaction.data.cryptoUpdateAccount.has_expirationTime) {
+        // Show raw timestamp (Unix seconds since epoch)
+        hedera_safe_printf(st_ctx.expiration_time, "%llu", 
+                          st_ctx.transaction.data.cryptoUpdateAccount.expirationTime.seconds);
+    } else {
+        strcpy(st_ctx.expiration_time, "-");
+    }
+}
+
+void reformat_receiver_sig_required(void) {
+    
+    if (st_ctx.type == Update) {
+        if (st_ctx.transaction.data.cryptoUpdateAccount.which_receiverSigRequiredField == 
+            Hedera_CryptoUpdateTransactionBody_receiverSigRequiredWrapper_tag) {
+            
+            bool required = st_ctx.transaction.data.cryptoUpdateAccount.receiverSigRequiredField
+                          .receiverSigRequiredWrapper.value;
+            if (required) {
+                strcpy(st_ctx.receiver_sig_required, "Yes");
+            } else {
+                strcpy(st_ctx.receiver_sig_required, "No");
+            }
+        } else {
+           strcpy(st_ctx.receiver_sig_required, "-");
+        }
+    } else {
+        strcpy(st_ctx.receiver_sig_required, "-");
+    }
+}
+
+void reformat_max_automatic_token_associations(void) {
+    
+    if (st_ctx.type == Update && st_ctx.transaction.data.cryptoUpdateAccount.has_max_automatic_token_associations) {
+        hedera_safe_printf(st_ctx.max_auto_token_assoc, "%d", 
+                          st_ctx.transaction.data.cryptoUpdateAccount.max_automatic_token_associations.value);
+    } else {
+        strcpy(st_ctx.max_auto_token_assoc, "-");
+    }
+}

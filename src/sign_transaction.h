@@ -151,6 +151,12 @@ typedef struct sign_tx_context_s {
 
     // Transaction Memo
     char memo[MAX_MEMO_SIZE + 1];
+
+    // Additional fields for crypto update transactions
+    char auto_renew_period[DISPLAY_SIZE * 2 + 1];
+    char expiration_time[DISPLAY_SIZE * 2 + 1];
+    char receiver_sig_required[6];
+    char max_auto_token_assoc[16];
 #endif
 
     // Parsed transaction
