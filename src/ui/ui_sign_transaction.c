@@ -742,7 +742,7 @@ static void review_choice(bool confirm) {
 // Max is 7 infos for transfer transaction
 // If a new flow is added or flows are modified to include more steps, don't
 // forget to update the infos array size!
-static nbgl_contentTagValue_t infos[10];  // Increased to 10 to accommodate crypto update fields
+static nbgl_contentTagValue_t infos[12];  // Increased to 10 to accommodate crypto update fields
 // Content of the review flow
 static nbgl_contentTagValueList_t content;
 static char review_start_title[64];
