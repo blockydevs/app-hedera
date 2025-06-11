@@ -103,8 +103,6 @@ APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/crypto_helpers.c
 # Additional include paths
 INCLUDES_PATH += ${BOLOS_SDK}/lib_standard_app $(NANOPB_DIR) .
 
-# Resolve symbol conflicts: prioritize SDK implementations over libc
-LDFLAGS += -Wl,--allow-multiple-definition
 
 include vendor/nanopb/extra/nanopb.mk
 
