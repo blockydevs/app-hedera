@@ -342,6 +342,58 @@ def test_hedera_crypto_update_account_invalid_zero_account(backend, firmware, sc
     assert rapdu.status == ErrorType.EXCEPTION_MALFORMED_APDU
 
 
+
+def test_hedera_crypto_update_account_key_change_refused(backend, firmware, scenario_navigator):
+    """Test that crypto update fails when trying to change the key"""
+    hedera = HederaClient(backend)
+    conf = crypto_update_account_conf(
+        targetShardNum=1, 
+        targetRealmNum=2, 
+        targetAccountNum=3,
+        includeKey=True
+    )
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=5,
+        memo="key_change_test",
+        conf=conf,
+    ):
+        backend.raise_policy = RaisePolicy.RAISE_NOTHING
+
+    rapdu = hedera.get_async_response()
+    assert rapdu.status == ErrorType.EXCEPTION_MALFORMED_APDU
+
+
+def test_hedera_crypto_update_account_all_fields_ok(backend, firmware, scenario_navigator):
+    """Test crypto update with all possible fields set"""
+    hedera = HederaClient(backend)
+    conf = crypto_update_account_conf(
+        targetShardNum=5,
+        targetRealmNum=10,
+        targetAccountNum=12345,
+        autoRenewPeriodSeconds=7776000,  # 90 days
+        expirationTimeSeconds=1735689600,  # Jan 1, 2025
+        receiverSigRequired=True,
+        maxAutoTokenAssociations=100,
+        stakeTargetNode=2,
+        declineRewards=False,
+    )
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=10,
+        memo="comprehensive_update_test",
+        conf=conf,
+    ):
+        navigation_helper_confirm(firmware, scenario_navigator)
+
+
+
 def test_hedera_transfer_token_ok(backend, firmware, scenario_navigator):
     hedera = HederaClient(backend)
     conf = crypto_transfer_token_conf(

@@ -671,6 +671,18 @@ UX_STEP_NOCB(amount_step, bnnn_paging,
              {.title = (char*)st_ctx.amount_title,
               .text = (char*)st_ctx.amount});
 
+UX_STEP_NOCB(auto_renew_period_step, bnnn_paging,
+             {.title = "Auto Renew Period", .text = (char*)st_ctx.auto_renew_period});
+
+UX_STEP_NOCB(expiration_time_step, bnnn_paging,
+             {.title = "Account Expires", .text = (char*)st_ctx.expiration_time});
+
+UX_STEP_NOCB(receiver_sig_required_step, bnnn_paging,
+             {.title = "Recv Sign Required?", .text = (char*)st_ctx.receiver_sig_required});
+
+UX_STEP_NOCB(max_auto_token_assoc_step, bn_paging,
+             {.title = "Max Auto\nToken Assoc", .text = (char*)st_ctx.max_auto_token_assoc});
+
 UX_STEP_NOCB(fee_step, bnnn_paging,
              {.title = "Max fees", .text = (char*)st_ctx.fee});
 
@@ -709,6 +721,11 @@ UX_DEF(ux_associate_flow, &summary_token_trans_step, &key_index_step, &token_nam
 UX_DEF(ux_associate_known_token_flow, &summary_token_trans_step, &key_index_step, &token_name_step, &token_addr_step,
        &fee_step, &confirm_step, &reject_step);
 
+// Update UX Flow
+UX_DEF(ux_update_flow, &summary_step, &operator_step, &senders_step,
+       &recipients_step, &amount_step, &auto_renew_period_step, &expiration_time_step, &receiver_sig_required_step, &max_auto_token_assoc_step, &fee_step, &memo_step, &confirm_step,
+       &reject_step);
+
 #elif defined(HAVE_NBGL)
 
 static void review_choice(bool confirm) {
@@ -725,7 +742,7 @@ static void review_choice(bool confirm) {
 // Max is 7 infos for transfer transaction
 // If a new flow is added or flows are modified to include more steps, don't
 // forget to update the infos array size!
-static nbgl_contentTagValue_t infos[8];
+static nbgl_contentTagValue_t infos[10];  // Increased to 10 to accommodate crypto update fields
 // Content of the review flow
 static nbgl_contentTagValueList_t content;
 static char review_start_title[64];
@@ -780,6 +797,52 @@ static void create_transaction_flow(void) {
             infos[index].item = "Memo";
             infos[index].value = st_ctx.memo;
             ++index;
+            break;
+        case Update:
+            infos[index].item = "Operator";
+            infos[index].value = st_ctx.operator;
+            ++index;
+            if (strlen(st_ctx.senders) > 0 && strcmp(st_ctx.senders, "-") != 0) {
+                infos[index].item = st_ctx.senders_title;
+                infos[index].value = st_ctx.senders;
+                ++index;
+            }
+            if (strlen(st_ctx.recipients) > 0 && strcmp(st_ctx.recipients, "-") != 0) {
+                infos[index].item = st_ctx.recipients_title;
+                infos[index].value = st_ctx.recipients;
+                ++index;
+            }
+            infos[index].item = st_ctx.amount_title;
+            infos[index].value = st_ctx.amount;
+            ++index;
+            if (strlen(st_ctx.auto_renew_period) > 0 && strcmp(st_ctx.auto_renew_period, "-") != 0) {
+                infos[index].item = "Auto Renew Period";
+                infos[index].value = st_ctx.auto_renew_period;
+                ++index;
+            }
+            if (strlen(st_ctx.expiration_time) > 0 && strcmp(st_ctx.expiration_time, "-") != 0) {
+                infos[index].item = "Account Expires";
+                infos[index].value = st_ctx.expiration_time;
+                ++index;
+            }
+            if (strlen(st_ctx.receiver_sig_required) > 0 && strcmp(st_ctx.receiver_sig_required, "-") != 0) {
+                infos[index].item = "Receiver Signature Required?";
+                infos[index].value = st_ctx.receiver_sig_required;
+                ++index;
+            }
+            if (strlen(st_ctx.max_auto_token_assoc) > 0 && strcmp(st_ctx.max_auto_token_assoc, "-") != 0) {
+                infos[index].item = "Max Auto Token Assoc";
+                infos[index].value = st_ctx.max_auto_token_assoc;
+                ++index;
+            }
+            infos[index].item = "Max Fee";
+            infos[index].value = st_ctx.fee;
+            ++index;
+            if (strlen(st_ctx.memo) > 0) {
+                infos[index].item = "Memo";
+                infos[index].value = st_ctx.memo;
+                ++index;
+            }
             break;
         case TokenTransfer:
             // FALLTHROUGH
@@ -857,9 +920,10 @@ void ui_sign_transaction(void) {
         case Verify:
             ux_flow_init(0, ux_verify_flow, NULL);
             break;
-        case Create:
-            // FALLTHROUGH
         case Update:
+            ux_flow_init(0, ux_update_flow, NULL);
+            break;
+        case Create:
             // FALLTHROUGH
         case Transfer:
             ux_flow_init(0, ux_transfer_flow, NULL);

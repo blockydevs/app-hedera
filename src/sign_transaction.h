@@ -165,7 +165,10 @@ typedef struct sign_tx_context_s {
     uint32_t token_decimals;
     char token_name[MAX_TOKEN_LEN];
     char token_address_str[MAX_HEDERA_ADDRESS_LENGTH*2 + 1];
-
+    char auto_renew_period[DISPLAY_SIZE * 2 + 1];
+    char expiration_time[DISPLAY_SIZE * 2 + 1];
+    char receiver_sig_required[6];
+    char max_auto_token_assoc[16];
 #endif
 
     // Parsed transaction

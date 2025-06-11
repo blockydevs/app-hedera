@@ -48,8 +48,16 @@ void reformat_amount_transfer(void);
 
 void reformat_token_transfer(void);
 
-void reformat_fee();
-
-void reformat_memo();
+void reformat_fee(void);
 
 void address_to_string(const token_addr_t *addr, char *buf);
+
+void reformat_memo(void);
+
+void reformat_auto_renew_period(void);
+
+void reformat_expiration_time(void);
+
+void reformat_receiver_sig_required(void);
+
+void reformat_max_automatic_token_associations(void);
