@@ -855,7 +855,7 @@ static void create_transaction_flow(void) {
     // If a new flow is added or flows are modified to include more steps, don't
     // forget to update the infos array size!
     content.nbMaxLinesForValue = 0;
-    content.smallCaseForValue = true;
+    content.smallCaseForValue = false;
     content.wrapping = true;
     content.pairs = infos;
     content.callback = NULL;
