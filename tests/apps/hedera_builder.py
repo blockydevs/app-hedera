@@ -81,6 +81,7 @@ def crypto_update_account_conf(
     receiverSigRequired: bool = None,
     maxAutoTokenAssociations: int = None,
     includeKey: bool = False,
+    accountMemo: str = None,
 ) -> Dict:
     account_id = basic_types_pb2.AccountID(
         shardNum=targetShardNum, realmNum=targetRealmNum, accountNum=targetAccountNum
@@ -126,6 +127,10 @@ def crypto_update_account_conf(
     if maxAutoTokenAssociations is not None:
         max_tokens = wrappers_pb2.Int32Value(value=maxAutoTokenAssociations)
         crypto_update_account.max_automatic_token_associations.CopyFrom(max_tokens)
+
+    if accountMemo is not None:
+        account_memo_value = wrappers_pb2.StringValue(value=accountMemo)
+        crypto_update_account.memo.CopyFrom(account_memo_value)
 
     return {"cryptoUpdateAccount": crypto_update_account}
 

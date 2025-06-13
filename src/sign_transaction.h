@@ -157,6 +157,7 @@ typedef struct sign_tx_context_s {
     char expiration_time[DISPLAY_SIZE * 2 + 1];
     char receiver_sig_required[6];
     char max_auto_token_assoc[16];
+    char account_memo[100];
 #endif
 
     // Parsed transaction

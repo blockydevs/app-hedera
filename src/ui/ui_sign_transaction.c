@@ -671,6 +671,9 @@ UX_STEP_NOCB(receiver_sig_required_step, bnnn_paging,
 UX_STEP_NOCB(max_auto_token_assoc_step, bn_paging,
              {.title = "Max Auto\nToken Assoc", .text = (char*)st_ctx.max_auto_token_assoc});
 
+UX_STEP_NOCB(account_memo_step, bnnn_paging,
+             {.title = "Account Memo", .text = (char*)st_ctx.account_memo});
+
 UX_STEP_NOCB(fee_step, bnnn_paging,
              {.title = "Max Fee", .text = (char*)st_ctx.fee});
 
@@ -702,7 +705,7 @@ UX_DEF(ux_associate_flow, &summary_step, &operator_step, &senders_step,
 
 // Update UX Flow
 UX_DEF(ux_update_flow, &summary_step, &operator_step, &senders_step,
-       &recipients_step, &amount_step, &auto_renew_period_step, &expiration_time_step, &receiver_sig_required_step, &max_auto_token_assoc_step, &fee_step, &memo_step, &confirm_step,
+       &recipients_step, &amount_step, &auto_renew_period_step, &expiration_time_step, &receiver_sig_required_step, &max_auto_token_assoc_step, &account_memo_step, &fee_step, &memo_step, &confirm_step,
        &reject_step);
 
 #elif defined(HAVE_NBGL)
@@ -797,6 +800,11 @@ static void create_transaction_flow(void) {
                 infos[index].item = "Max Auto Token Assoc";
                 infos[index].value = st_ctx.max_auto_token_assoc;
                 ++index;
+            }
+            if (strlen(st_ctx.account_memo) > 0 && strcmp(st_ctx.account_memo, "-") != 0) {
+                infos[index].item = "Account Memo";
+                infos[index].value = st_ctx.account_memo;
+                ++index;    
             }
             infos[index].item = "Max Fee";
             infos[index].value = st_ctx.fee;
