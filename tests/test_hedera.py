@@ -562,6 +562,7 @@ def test_hedera_crypto_update_account_all_fields_ok(backend, firmware, scenario_
         maxAutoTokenAssociations=100,
         stakeTargetNode=2,
         declineRewards=False,
+        accountMemo="Nice Account Memo",
     )
     with hedera.send_sign_transaction(
         index=0,
