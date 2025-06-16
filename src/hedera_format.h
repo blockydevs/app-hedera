@@ -45,6 +45,8 @@ void reformat_account_to_update(void);
 
 void reformat_updated_account(void);
 
+void reformat_unstake_account_to_update(void);
+
 void reformat_amount_transfer(void);
 
 void reformat_token_transfer(void);

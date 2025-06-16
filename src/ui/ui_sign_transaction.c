@@ -732,6 +732,11 @@ UX_DEF(ux_stake_flow, &summary_token_trans_step, &key_index_step,
        &operator_step, &amount_step, &recipients_step, &collect_rewards_step,
        &fee_step, &confirm_step, &reject_step);
 
+// Unstake UX Flow
+UX_DEF(ux_unstake_flow, &summary_token_trans_step, &key_index_step,
+       &operator_step, &amount_step, &collect_rewards_step,
+       &fee_step, &confirm_step, &reject_step);
+
 #elif defined(HAVE_NBGL)
 
 static void review_choice(bool confirm) {
@@ -815,6 +820,12 @@ static void create_transaction_flow(void) {
                     infos[index].item = "Account";
                     infos[index].value = st_ctx.amount;
                     ++index;
+                    if (strlen(st_ctx.collect_rewards) > 0 &&
+                        strcmp(st_ctx.collect_rewards, "-") != 0) {
+                        infos[index].item = "Collect rewards?";
+                        infos[index].value = st_ctx.collect_rewards;
+                        ++index;
+                    }
                     break;
                 default:
                     infos[index].item = "Operator";
@@ -832,9 +843,12 @@ static void create_transaction_flow(void) {
                         infos[index].value = st_ctx.recipients;
                         ++index;
                     }
-                    infos[index].item = st_ctx.amount_title;
-                    infos[index].value = st_ctx.amount;
-                    ++index;
+                    if (strlen(st_ctx.amount) > 0 &&
+                        strcmp(st_ctx.amount, "-") != 0) {
+                        infos[index].item = st_ctx.amount_title;
+                        infos[index].value = st_ctx.amount;
+                        ++index;
+                    }
                     if (strlen(st_ctx.auto_renew_period) > 0 &&
                         strcmp(st_ctx.auto_renew_period, "-") != 0) {
                         infos[index].item = "Auto renew period";
@@ -954,8 +968,7 @@ void ui_sign_transaction(void) {
                     ux_flow_init(0, ux_stake_flow, NULL);
                     break;
                 case UNSTAKE_UPDATE:
-                    PRINTF("Unstake update\n");
-                    // ux_flow_init(0, ux_unstake_flow, NULL);
+                    ux_flow_init(0, ux_unstake_flow, NULL);
                     break;
                 default:
                     ux_flow_init(0, ux_update_flow, NULL);

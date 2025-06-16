@@ -323,6 +323,73 @@ def test_hedera_crypto_update_account_stake_node_refused(backend, firmware, scen
     assert rapdu.status == ErrorType.EXCEPTION_USER_REJECTED
 
 
+def test_hedera_crypto_update_account_unstake_ok(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    conf = crypto_update_account_conf(
+        targetShardNum=0,
+        targetRealmNum=0,
+        targetAccountNum=654321,
+        stakeTargetShardNum=0,
+        stakeTargetRealmNum=0,
+        stakeTargetAccount=0,
+        declineRewards=False,
+    )
+    with hedera.send_sign_transaction(
+        index=1,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=int(10**8), # 1 Hbar
+        memo="Unstaking Hbar",
+        conf=conf,
+    ):
+        navigation_helper_confirm(firmware, scenario_navigator)
+
+def test_hedera_crypto_update_account_unstake_node_ok(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    conf = crypto_update_account_conf(
+        targetShardNum=0,
+        targetRealmNum=0,
+        targetAccountNum=654321,
+        stakeTargetNode=-1,
+        declineRewards=False,
+    )
+    with hedera.send_sign_transaction(
+        index=1,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=int(10**8), # 1 Hbar
+        memo="Unstaking Hbar",
+        conf=conf,
+    ):
+        navigation_helper_confirm(firmware, scenario_navigator)
+
+def test_hedera_crypto_update_account_unstake_node_refused(backend, firmware, scenario_navigator):
+
+    hedera = HederaClient(backend)
+    conf = crypto_update_account_conf(
+        targetShardNum=0,
+        targetRealmNum=0,
+        targetAccountNum=654321,
+        stakeTargetNode=-1,
+        declineRewards=False,
+    )
+    with hedera.send_sign_transaction(
+        index=1,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=int(10**8), # 1 Hbar
+        memo="Unstaking Hbar",
+        conf=conf,
+    ):
+        backend.raise_policy = RaisePolicy.RAISE_NOTHING
+        navigation_helper_reject(firmware, scenario_navigator)
+
+    rapdu = hedera.get_async_response()
+    assert rapdu.status == ErrorType.EXCEPTION_USER_REJECTED
+
 def test_hedera_crypto_update_account_invalid_zero_account(backend, firmware, scenario_navigator):
     hedera = HederaClient(backend)
     conf = crypto_update_account_conf(

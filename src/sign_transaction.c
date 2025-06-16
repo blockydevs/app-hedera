@@ -149,8 +149,7 @@ void handle_transaction_body() {
                     break;
                 case UNSTAKE_UPDATE:
                     reformat_summary("unstake Hbar");
-                    reformat_account_to_update();
-                    reformat_stake_in_stake_flow();
+                    reformat_unstake_account_to_update();
                     reformat_collect_rewards_in_stake_flow();
                     break;
                 default:
