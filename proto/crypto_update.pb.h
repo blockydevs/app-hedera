@@ -94,7 +94,8 @@ typedef struct _Hedera_CryptoUpdateTransactionBody {
  If true, this account's key must sign any transaction depositing into
  this account (in addition to all withdrawals) */
     pb_size_t which_staked_id;
-    union {
+    union 
+    {
         Hedera_AccountID staked_account_id;
         int64_t staked_node_id;
     } staked_id; 

@@ -236,6 +236,8 @@ def test_hedera_crypto_update_account_stake_account_ok(backend, firmware, scenar
         targetRealmNum=901,
         targetAccountNum=7,
         stakeTargetAccount=666,
+        stakeTargetShardNum=555,
+        stakeTargetRealmNum=444,
         declineRewards=True,
     )
     with hedera.send_sign_transaction(

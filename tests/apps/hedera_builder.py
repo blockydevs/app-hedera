@@ -82,6 +82,8 @@ def crypto_update_account_conf(
     maxAutoTokenAssociations: int = None,
     includeKey: bool = False,
     accountMemo: str = None,
+    stakeTargetShardNum: int = 0,
+    stakeTargetRealmNum: int = 0,
 ) -> Dict:
     account_id = basic_types_pb2.AccountID(
         shardNum=targetShardNum, realmNum=targetRealmNum, accountNum=targetAccountNum
@@ -103,7 +105,11 @@ def crypto_update_account_conf(
     
     # Add staking configuration
     if stakeTargetAccount:
-        stake_account_id = basic_types_pb2.AccountID(accountNum=stakeTargetAccount)
+        stake_account_id = basic_types_pb2.AccountID(
+            shardNum=stakeTargetShardNum,
+            realmNum=stakeTargetRealmNum,
+            accountNum=stakeTargetAccount,
+        )
         crypto_update_account.staked_account_id.CopyFrom(stake_account_id)
     elif stakeTargetNode:
         crypto_update_account.staked_node_id = stakeTargetNode
