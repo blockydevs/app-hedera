@@ -101,6 +101,10 @@ void reformat_key(void) {
                        st_ctx.key_index);
 }
 
+void reformat_key_index(void) {
+    hedera_safe_printf(st_ctx.key_index_str, "#%u", st_ctx.key_index);
+}
+
 // SUMMARIES
 
 void reformat_summary(const char *summary) {
@@ -173,7 +177,7 @@ void reformat_operator(void) {
 // SENDERS
 
 void reformat_stake_target(void) {
-    set_senders_title("Stake To");
+    set_senders_title("Stake to");
 
     if (st_ctx.type == Create) {
         // st_ctx.senders --> st_ctx.full (NANOS)
@@ -194,6 +198,8 @@ void reformat_stake_target(void) {
             hedera_safe_printf(st_ctx.senders, "Node %lld",
                                st_ctx.transaction.data.cryptoCreateAccount
                                    .staked_id.staked_node_id);
+        } else {
+            hedera_safe_printf(st_ctx.senders, "-");
         }
     } else if (st_ctx.type == Update) {
         if (st_ctx.transaction.data.cryptoUpdateAccount.which_staked_id ==
@@ -212,6 +218,9 @@ void reformat_stake_target(void) {
             hedera_safe_printf(st_ctx.senders, "Node %lld",
                                st_ctx.transaction.data.cryptoUpdateAccount
                                    .staked_id.staked_node_id);
+        }
+        else {
+            hedera_safe_printf(st_ctx.senders, "-");
         }
     }
 }
@@ -306,8 +315,31 @@ void reformat_token_sender_account(void) {
 
 // RECIPIENTS
 
+void reformat_stake_in_stake_flow(void) {
+    PRINTF("Reformatting stake in stake flow\n");
+    set_recipients_title("Stake to");
+     if (st_ctx.transaction.data.cryptoUpdateAccount.which_staked_id ==
+            Hedera_CryptoUpdateTransactionBody_staked_account_id_tag) {
+            hedera_safe_printf(
+                st_ctx.recipients, "%llu.%llu.%llu",
+                st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                    .staked_account_id.shardNum,
+                st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                    .staked_account_id.realmNum,
+                st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                    .staked_account_id.account.accountNum);
+        } else if (st_ctx.transaction.data.cryptoUpdateAccount
+                       .which_staked_id ==
+                   Hedera_CryptoUpdateTransactionBody_staked_node_id_tag) {
+                    //TODO Node name
+            hedera_safe_printf(st_ctx.recipients, "Node %lld",
+                               st_ctx.transaction.data.cryptoUpdateAccount
+                                   .staked_id.staked_node_id);
+        }
+}
+
 void reformat_collect_rewards(void) {
-    set_recipients_title("Collect Rewards?");
+    set_recipients_title("Collect rewards?");
 
     if (st_ctx.type == Create) {
         // st_ctx.recipients --> st_ctx.full (NANOS)
@@ -384,6 +416,18 @@ void reformat_updated_account(void) {
     }
 }
 
+void reformat_account_to_update(void) {
+    set_amount_title("Account");
+
+    hedera_safe_printf(st_ctx.amount, "%llu.%llu.%llu",
+                       st_ctx.transaction.data.cryptoUpdateAccount
+                           .accountIDToUpdate.shardNum,
+                       st_ctx.transaction.data.cryptoUpdateAccount
+                           .accountIDToUpdate.realmNum,
+                       st_ctx.transaction.data.cryptoUpdateAccount
+                           .accountIDToUpdate.account.accountNum);
+}
+
 void reformat_amount_balance(void) {
     set_amount_title("Balance");
 
@@ -445,7 +489,7 @@ void reformat_token_transfer(void) {
 
 void reformat_fee(void) {
 #if defined(TARGET_NANOS)
-    set_title("Max Fee");
+    set_title("Max fees");
 #endif
     // st_ctx.fee --> st_ctx.full (NANOS)
     hedera_safe_printf(
@@ -468,6 +512,8 @@ void reformat_memo(void) {
         (st_ctx.transaction.memo[0] != '\0') ? st_ctx.transaction.memo : "");
 }
 
+// CRYPTO UPDATE specific fields
+
 void reformat_auto_renew_period(void) {
     
     if (st_ctx.type == Update && st_ctx.transaction.data.cryptoUpdateAccount.has_autoRenewPeriod) {
@@ -480,7 +526,7 @@ void reformat_auto_renew_period(void) {
             hedera_safe_printf(st_ctx.auto_renew_period, "%llu seconds", seconds);
         }
     } else {
-        strcpy(st_ctx.auto_renew_period, "-");
+        hedera_safe_printf(st_ctx.auto_renew_period, "-");
     }
 }
 
@@ -491,7 +537,7 @@ void reformat_expiration_time(void) {
         hedera_safe_printf(st_ctx.expiration_time, "%llu", 
                           st_ctx.transaction.data.cryptoUpdateAccount.expirationTime.seconds);
     } else {
-        strcpy(st_ctx.expiration_time, "-");
+        hedera_safe_printf(st_ctx.expiration_time, "-");
     }
 }
 
@@ -504,15 +550,15 @@ void reformat_receiver_sig_required(void) {
             bool required = st_ctx.transaction.data.cryptoUpdateAccount.receiverSigRequiredField
                           .receiverSigRequiredWrapper.value;
             if (required) {
-                strcpy(st_ctx.receiver_sig_required, "Yes");
+                hedera_safe_printf(st_ctx.receiver_sig_required, "Yes");
             } else {
-                strcpy(st_ctx.receiver_sig_required, "No");
+                hedera_safe_printf(st_ctx.receiver_sig_required, "No");
             }
         } else {
-           strcpy(st_ctx.receiver_sig_required, "-");
+           hedera_safe_printf(st_ctx.receiver_sig_required, "-");
         }
     } else {
-        strcpy(st_ctx.receiver_sig_required, "-");
+        hedera_safe_printf(st_ctx.receiver_sig_required, "-");
     }
 }
 
@@ -522,6 +568,11 @@ void reformat_max_automatic_token_associations(void) {
         hedera_safe_printf(st_ctx.max_auto_token_assoc, "%d", 
                           st_ctx.transaction.data.cryptoUpdateAccount.max_automatic_token_associations.value);
     } else {
-        strcpy(st_ctx.max_auto_token_assoc, "-");
+        hedera_safe_printf(st_ctx.max_auto_token_assoc, "-");
     }
+}
+
+void reformat_collect_rewards_in_stake_flow(void) {
+    bool declineRewards = st_ctx.transaction.data.cryptoCreateAccount.decline_reward;
+    hedera_safe_printf(st_ctx.collect_rewards, "%s", !declineRewards ? "yes" : "no");
 }

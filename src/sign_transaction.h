@@ -15,6 +15,7 @@
 #include "transaction_body.pb.h"
 #include "ui_common.h"
 #include "utils.h"
+#include "staking.h"
 
 enum TransactionStep {
     Summary = 1,
@@ -93,6 +94,9 @@ typedef struct sign_tx_context_s {
     char summary_line_1[DISPLAY_SIZE + 1];
     char summary_line_2[DISPLAY_SIZE + 1];
 
+    //Key Index in str
+    char key_index_str[DISPLAY_SIZE + 1];
+
 #if defined(TARGET_NANOS)
     union {
 #define TITLE_SIZE (DISPLAY_SIZE + 1)
@@ -152,11 +156,23 @@ typedef struct sign_tx_context_s {
     // Transaction Memo
     char memo[MAX_MEMO_SIZE + 1];
 
-    // Additional fields for crypto update transactions
-    char auto_renew_period[DISPLAY_SIZE * 2 + 1];
-    char expiration_time[DISPLAY_SIZE * 2 + 1];
+    // Additional fields for generic crypto update and stake transactions
+    // Subtype of crypto update (generic, stake, unstake) - NOT FOR UI - used for choosing the correct UI flow
+    update_type_t update_type;
+    // Auto Renew Period
+    char auto_renew_period[DISPLAY_SIZE];
+    // Expiration Time
+    char expiration_time[DISPLAY_SIZE*2];
+    // Receiver Signature Required? (yes / no)
     char receiver_sig_required[6];
-    char max_auto_token_assoc[16];
+    // Max Auto Token Association 
+    char max_auto_token_assoc[DISPLAY_SIZE];
+    // Stake to
+    char stake_node[DISPLAY_SIZE];
+    // Collect Rewards? (yes / no)
+    char collect_rewards[6];
+    // Account Memo
+    // Important: This is whole account memo, not the memo field in the transaction body
     char account_memo[100];
 #endif
 

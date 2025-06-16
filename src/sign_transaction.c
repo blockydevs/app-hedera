@@ -139,28 +139,39 @@ void handle_transaction_body() {
             validate_crypto_update(); // THROWs
 
             st_ctx.type = Update;
-            reformat_summary("Update Account");
-
-#if !defined(TARGET_NANOS)
-            reformat_stake_target();
-            reformat_collect_rewards();
-            reformat_updated_account();
-            
-            // Format crypto update specific fields
-            reformat_auto_renew_period();
-            reformat_expiration_time();
-            reformat_receiver_sig_required();
-            reformat_max_automatic_token_associations();
-#endif
+            st_ctx.update_type = identify_special_update(&st_ctx.transaction.data.cryptoUpdateAccount);
+            switch (st_ctx.update_type) {
+                case STAKE_UPDATE:
+                    reformat_summary("stake Hbar");
+                    reformat_account_to_update();
+                    reformat_stake_in_stake_flow();
+                    reformat_collect_rewards_in_stake_flow();
+                    break;
+                case UNSTAKE_UPDATE:
+                    reformat_summary("unstake Hbar");
+                    reformat_account_to_update();
+                    reformat_stake_in_stake_flow();
+                    reformat_collect_rewards_in_stake_flow();
+                    break;
+                default:
+                    reformat_summary("update account");
+                    reformat_updated_account();
+                    reformat_stake_target();
+                    reformat_auto_renew_period();
+                    reformat_expiration_time();
+                    reformat_receiver_sig_required();
+                    reformat_max_automatic_token_associations();
+                    reformat_collect_rewards();
+                    break;
+            }
+            reformat_key_index();
             break;
 
         case Hedera_TransactionBody_tokenAssociate_tag:
             st_ctx.type = Associate;
             reformat_summary("Associate Token");
 
-#if !defined(TARGET_NANOS)
             reformat_token_associate();
-#endif
             break;
 
         case Hedera_TransactionBody_tokenDissociate_tag:
