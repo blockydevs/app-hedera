@@ -427,6 +427,18 @@ void reformat_account_to_update(void) {
                            .accountIDToUpdate.account.accountNum);
 }
 
+void reformat_unstake_account_to_update(void) {
+    set_amount_title("Unstake account");
+
+    hedera_safe_printf(st_ctx.amount, "%llu.%llu.%llu",
+                       st_ctx.transaction.data.cryptoUpdateAccount
+                           .accountIDToUpdate.shardNum,
+                       st_ctx.transaction.data.cryptoUpdateAccount
+                           .accountIDToUpdate.realmNum,
+                       st_ctx.transaction.data.cryptoUpdateAccount
+                           .accountIDToUpdate.account.accountNum);
+}
+
 void reformat_amount_balance(void) {
     set_amount_title("Balance");
 

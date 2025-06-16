@@ -82,8 +82,8 @@ def crypto_update_account_conf(
     maxAutoTokenAssociations: int = None,
     includeKey: bool = False,
     accountMemo: str = None,
-    stakeTargetShardNum: int = 0,
-    stakeTargetRealmNum: int = 0,
+    stakeTargetShardNum: int = None,
+    stakeTargetRealmNum: int = None,
 ) -> Dict:
     account_id = basic_types_pb2.AccountID(
         shardNum=targetShardNum, realmNum=targetRealmNum, accountNum=targetAccountNum
