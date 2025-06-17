@@ -297,6 +297,31 @@ def test_hedera_crypto_update_account_stake_node_ok(backend, firmware, scenario_
     ):
         navigation_helper_confirm(firmware, scenario_navigator)
 
+def test_hedera_crypto_transfer_collect_rewards_ok(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    # Create specilized transaction for collecting rewards
+    # Receipent => 0.0.800
+    # Amount => 1 tinybar
+    # Memo => Collect Staking Rewards
+    conf = crypto_transfer_hbar_conf(
+        sender_shardNum=0,
+        sender_realmNum=0,
+        sender_accountNum=12345,
+        recipient_shardNum=0,
+        recipient_realmNum=0,
+        recipient_accountNum=800,
+        amount=1, # 1 tinybar 
+    )
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=0,
+        operator_realm_num=0,
+        operator_account_num=12345,
+        transaction_fee=5,
+        memo="Collect Staking Rewards",
+        conf=conf,
+    ):
+        navigation_helper_confirm(firmware, scenario_navigator)
 
 def test_hedera_crypto_update_account_stake_node_refused(backend, firmware, scenario_navigator):
     hedera = HederaClient(backend)
