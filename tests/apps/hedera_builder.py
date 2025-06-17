@@ -71,7 +71,6 @@ def crypto_create_account_conf(
 
 def crypto_update_account_conf(
     declineRewards: bool = None,
-    stakeTargetAccount: int = None,
     stakeTargetNode: int = None,
     targetShardNum: int = 0,
     targetRealmNum: int = 0,
@@ -84,6 +83,7 @@ def crypto_update_account_conf(
     accountMemo: str = None,
     stakeTargetShardNum: int = None,
     stakeTargetRealmNum: int = None,
+    stakeTargetAccount: int = None,
 ) -> Dict:
     account_id = basic_types_pb2.AccountID(
         shardNum=targetShardNum, realmNum=targetRealmNum, accountNum=targetAccountNum
@@ -104,14 +104,14 @@ def crypto_update_account_conf(
         crypto_update_account.decline_reward.CopyFrom(decline)
     
     # Add staking configuration
-    if stakeTargetAccount:
+    if stakeTargetAccount is not None:
         stake_account_id = basic_types_pb2.AccountID(
             shardNum=stakeTargetShardNum,
             realmNum=stakeTargetRealmNum,
             accountNum=stakeTargetAccount,
         )
         crypto_update_account.staked_account_id.CopyFrom(stake_account_id)
-    elif stakeTargetNode:
+    elif stakeTargetNode is not None:
         crypto_update_account.staked_node_id = stakeTargetNode
     
     # Add auto renew period if specified
