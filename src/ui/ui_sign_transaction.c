@@ -699,7 +699,7 @@ UX_STEP_VALID(reject_step, pb, io_seproxyhal_tx_reject(NULL),
               {&C_icon_crossmark, "Reject"});
 
 // Transfer UX Flow
-UX_DEF(ux_transfer_flow, &summary_step, &operator_step, &senders_step,
+UX_DEF(ux_transfer_flow, &summary_token_trans_step, &key_index_step, &operator_step, &senders_step,
        &recipients_step, &amount_step, &fee_step, &memo_step, &confirm_step,
        &reject_step);
 

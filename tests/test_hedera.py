@@ -572,6 +572,26 @@ def test_hedera_transfer_hbar_ok(backend, firmware, scenario_navigator):
     ):
         navigation_helper_confirm(firmware, scenario_navigator)
 
+def test_hedera_transfer_hbar_ok_with_key_index(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    conf = crypto_transfer_hbar_conf(
+        sender_shardNum=12345, sender_realmNum=12346, sender_accountNum=12347,
+        recipient_shardNum=100,
+        recipient_realmNum=101,
+        recipient_accountNum=102,
+        amount=int(12.23 * 10**8), # 12.23 Hbar
+    )
+    
+    with hedera.send_sign_transaction(
+        index=123,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=1,
+        memo="Transaction with key 123",
+        conf=conf,
+    ):
+        navigation_helper_confirm(firmware, scenario_navigator)
 
 def test_hedera_transfer_hbar_refused(backend, firmware, scenario_navigator):
     hedera = HederaClient(backend)
