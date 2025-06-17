@@ -130,9 +130,15 @@ void handle_transaction_body() {
     st_ctx.display_count = 1;
 #endif
 
-    // <Do Action>
-    // with Key #X?
+    // Legacy flow with Summary
+    // 1.<Do Action>
+    //   with Key #X?
     reformat_key();
+
+    // New flow with Key Index
+    // 1. Review transaction
+    // 2. With Key #X?
+    reformat_key_index();
 
 #if !defined(TARGET_NANOS)
     // All flows except Verify
@@ -180,7 +186,6 @@ void handle_transaction_body() {
                     reformat_collect_rewards();
                     break;
             }
-            reformat_key_index();
             break;
             
         case Hedera_TransactionBody_tokenAssociate_tag:
