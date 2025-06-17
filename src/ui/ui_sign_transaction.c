@@ -778,7 +778,7 @@ static void create_transaction_flow(void) {
             infos[index].item = st_ctx.amount_title;
             infos[index].value = st_ctx.amount;
             ++index;
-            infos[index].item = "Max Fee";
+            infos[index].item = "Max fees";
             infos[index].value = st_ctx.fee;
             ++index;
             infos[index].item = "Memo";
