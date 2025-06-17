@@ -736,11 +736,6 @@ UX_DEF(ux_associate_known_token_flow, &summary_token_trans_step, &key_index_step
        &fee_step, &confirm_step, &reject_step);
 
 // Update UX Flow
-// summary -> first screen
-// opperator
-// senders = stake to
-// recipients = collect rewards
-// amount = updating (account)
 UX_DEF(ux_update_flow, &summary_step, &operator_step, &senders_step,
        &recipients_step, &amount_step, &auto_renew_period_step,
        &expiration_time_step, &receiver_sig_required_step,
@@ -773,9 +768,7 @@ static void review_choice(bool confirm) {
 // Max is 7 infos for transfer transaction
 // If a new flow is added or flows are modified to include more steps, don't
 // forget to update the infos array size!
-static nbgl_contentTagValue_t
-    infos[12]; // Increased to 10 to accommodate crypto update fields
-// Content of the review flow
+static nbgl_contentTagValue_t infos[12]; 
 static nbgl_contentTagValueList_t content;
 static char review_start_title[64];
 static char review_final_title[64];

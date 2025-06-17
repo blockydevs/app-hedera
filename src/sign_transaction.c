@@ -366,10 +366,6 @@ void handle_sign_transaction(uint8_t p1, uint8_t p2, uint8_t* buffer,
         if(!extract_nested_string_field(raw_transaction, raw_transaction_length, 14, st_ctx.account_memo, sizeof(st_ctx.account_memo))) {
             strcpy(st_ctx.account_memo, "-");
         }
-        else
-        {
-            PRINTF("Account Memo: %s\n", st_ctx.account_memo);
-        }
     }
 
     handle_transaction_body();
