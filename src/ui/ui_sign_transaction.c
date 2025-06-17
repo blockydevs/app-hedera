@@ -634,7 +634,6 @@ unsigned int io_seproxyhal_tx_reject(const bagl_element_t* e) {
     ui_idle();
     return 0;
 }
-
 UX_STEP_NOCB(summary_token_trans_step, pn, {&C_icon_eye, "Review transaction"});
 UX_STEP_NOCB(summary_step, bnn,
              {"Summary", st_ctx.summary_line_1, st_ctx.summary_line_2});
@@ -648,6 +647,9 @@ UX_STEP_NOCB(
     }
 );
 
+UX_STEP_NOCB(key_index_step, bnnn_paging,
+             {.title = "With key", .text = st_ctx.key_index_str});
+
 UX_STEP_NOCB(senders_step, bnnn_paging,
              {.title = (char*)st_ctx.senders_title,
               .text = (char*)st_ctx.senders});
@@ -659,9 +661,6 @@ UX_STEP_NOCB(recipients_step, bnnn_paging,
 UX_STEP_NOCB(amount_step, bnnn_paging,
              {.title = (char*)st_ctx.amount_title,
               .text = (char*)st_ctx.amount});
-
-UX_STEP_NOCB(key_index_step, bnnn_paging,
-             {.title = "With key", .text = (char*)st_ctx.key_index_str});
 
 UX_STEP_NOCB(auto_renew_period_step, bnnn_paging,
              {.title = "Auto renew period",
@@ -700,8 +699,7 @@ UX_STEP_VALID(reject_step, pb, io_seproxyhal_tx_reject(NULL),
 
 // Transfer UX Flow
 UX_DEF(ux_transfer_flow, &summary_token_trans_step, &key_index_step, &operator_step, &senders_step,
-       &recipients_step, &amount_step, &fee_step, &memo_step, &confirm_step,
-       &reject_step);
+       &recipients_step, &amount_step, &fee_step, &memo_step, &confirm_step, &reject_step);
 
 // Verify UX Flow
 UX_DEF(ux_verify_flow, &summary_step, &senders_step, &confirm_step,
@@ -897,13 +895,13 @@ static void create_transaction_flow(void) {
             infos[index].item = st_ctx.senders_title;
             infos[index].value = st_ctx.senders;
             ++index;
-            infos[index].item = "Recipient";
+            infos[index].item = "To";
             infos[index].value = st_ctx.recipients;
             ++index;
             infos[index].item = st_ctx.amount_title;
             infos[index].value = st_ctx.amount;
             ++index;
-            infos[index].item = "Max Fee";
+            infos[index].item = "Max fees";
             infos[index].value = st_ctx.fee;
             ++index;
             infos[index].item = "Memo";

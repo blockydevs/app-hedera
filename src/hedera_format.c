@@ -99,6 +99,8 @@ void reformat_key(void) {
                        "#%u",
 #endif
                        st_ctx.key_index);
+
+    hedera_safe_printf(st_ctx.key_index_str, "#%u", st_ctx.key_index);
 }
 
 void reformat_key_index(void) {
@@ -282,7 +284,7 @@ void reformat_verify_account() {
 }
 
 void reformat_sender_account(void) {
-    set_senders_title("Account");
+    set_senders_title("From");
 
     // st_ctx.senders --> st_ctx.full (NANOS)
     hedera_safe_printf(st_ctx.senders, "%llu.%llu.%llu",
@@ -298,7 +300,7 @@ void reformat_sender_account(void) {
 }
 
 void reformat_token_sender_account(void) {
-    set_senders_title("Sender");
+    set_senders_title("From");
 
     // st_ctx.senders --> st_ctx.full (NANOS)
     hedera_safe_printf(st_ctx.senders, "%llu.%llu.%llu",
@@ -362,7 +364,7 @@ void reformat_collect_rewards(void) {
 }
 
 void reformat_recipient_account(void) {
-    set_recipients_title("Recipient");
+    set_recipients_title("To");
 
     // st_ctx.recipients --> st_ctx.full (NANOS)
     hedera_safe_printf(st_ctx.recipients, "%llu.%llu.%llu",
@@ -378,7 +380,7 @@ void reformat_recipient_account(void) {
 }
 
 void reformat_token_recipient_account(void) {
-    set_recipients_title("Recipient");
+    set_recipients_title("To");
 
     // st_ctx.recipients --> st_ctx.full (NANOS)
     hedera_safe_printf(st_ctx.recipients, "%llu.%llu.%llu",
