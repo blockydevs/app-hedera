@@ -1,5 +1,7 @@
 #include "hedera_format.h"
 
+#include "staking.h"
+
 #define BUF_SIZE 32
 
 static char *hedera_format_amount(uint64_t amount, uint8_t decimals) {
@@ -177,6 +179,7 @@ void reformat_stake_target(void) {
         if (st_ctx.transaction.data.cryptoCreateAccount.which_staked_id ==
             Hedera_CryptoCreateTransactionBody_staked_account_id_tag) {
             // An account ID and not a Node ID
+            // Check if this is the special Ledger account
             hedera_safe_printf(
                 st_ctx.senders, "%llu.%llu.%llu",
                 st_ctx.transaction.data.cryptoCreateAccount.staked_id
@@ -185,6 +188,7 @@ void reformat_stake_target(void) {
                     .staked_account_id.realmNum,
                 st_ctx.transaction.data.cryptoCreateAccount.staked_id
                     .staked_account_id.account.accountNum);
+
         } else if (st_ctx.transaction.data.cryptoCreateAccount
                        .which_staked_id ==
                    Hedera_CryptoCreateTransactionBody_staked_node_id_tag) {
@@ -197,22 +201,34 @@ void reformat_stake_target(void) {
     } else if (st_ctx.type == Update) {
         if (st_ctx.transaction.data.cryptoUpdateAccount.which_staked_id ==
             Hedera_CryptoUpdateTransactionBody_staked_account_id_tag) {
-            hedera_safe_printf(
-                st_ctx.senders, "%llu.%llu.%llu",
-                st_ctx.transaction.data.cryptoUpdateAccount.staked_id
-                    .staked_account_id.shardNum,
-                st_ctx.transaction.data.cryptoUpdateAccount.staked_id
-                    .staked_account_id.realmNum,
-                st_ctx.transaction.data.cryptoUpdateAccount.staked_id
-                    .staked_account_id.account.accountNum);
+            // Check if this is the special Ledger account
+            if (is_ledger_account(&st_ctx.transaction.data.cryptoUpdateAccount
+                                       .staked_id.staked_account_id)) {
+                hedera_safe_printf(
+                    st_ctx.senders, "Ledger by %llu.%llu.%llu",
+                    st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                        .staked_account_id.shardNum,
+                    st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                        .staked_account_id.realmNum,
+                    st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                        .staked_account_id.account.accountNum);
+            } else {
+                hedera_safe_printf(
+                    st_ctx.senders, "%llu.%llu.%llu",
+                    st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                        .staked_account_id.shardNum,
+                    st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                        .staked_account_id.realmNum,
+                    st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                        .staked_account_id.account.accountNum);
+            }
         } else if (st_ctx.transaction.data.cryptoUpdateAccount
                        .which_staked_id ==
                    Hedera_CryptoUpdateTransactionBody_staked_node_id_tag) {
             hedera_safe_printf(st_ctx.senders, "Node %lld",
                                st_ctx.transaction.data.cryptoUpdateAccount
                                    .staked_id.staked_node_id);
-        }
-        else {
+        } else {
             hedera_safe_printf(st_ctx.senders, "-");
         }
     }
@@ -315,10 +331,21 @@ void reformat_token_sender_account(void) {
 // RECIPIENTS
 
 void reformat_stake_in_stake_flow(void) {
-    PRINTF("Reformatting stake in stake flow\n");
     set_recipients_title("Stake to");
-     if (st_ctx.transaction.data.cryptoUpdateAccount.which_staked_id ==
-            Hedera_CryptoUpdateTransactionBody_staked_account_id_tag) {
+    if (st_ctx.transaction.data.cryptoUpdateAccount.which_staked_id ==
+        Hedera_CryptoUpdateTransactionBody_staked_account_id_tag) {
+        // Check if this is the special Ledger account
+        if (is_ledger_account(&st_ctx.transaction.data.cryptoUpdateAccount
+                                   .staked_id.staked_account_id)) {
+            hedera_safe_printf(
+                st_ctx.recipients, "Ledger by %llu.%llu.%llu",
+                st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                    .staked_account_id.shardNum,
+                st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                    .staked_account_id.realmNum,
+                st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                    .staked_account_id.account.accountNum);
+        } else {
             hedera_safe_printf(
                 st_ctx.recipients, "%llu.%llu.%llu",
                 st_ctx.transaction.data.cryptoUpdateAccount.staked_id
@@ -327,14 +354,14 @@ void reformat_stake_in_stake_flow(void) {
                     .staked_account_id.realmNum,
                 st_ctx.transaction.data.cryptoUpdateAccount.staked_id
                     .staked_account_id.account.accountNum);
-        } else if (st_ctx.transaction.data.cryptoUpdateAccount
-                       .which_staked_id ==
-                   Hedera_CryptoUpdateTransactionBody_staked_node_id_tag) {
-                    //TODO Node name
-            hedera_safe_printf(st_ctx.recipients, "Node %lld",
-                               st_ctx.transaction.data.cryptoUpdateAccount
-                                   .staked_id.staked_node_id);
         }
+    } else if (st_ctx.transaction.data.cryptoUpdateAccount.which_staked_id ==
+               Hedera_CryptoUpdateTransactionBody_staked_node_id_tag) {
+        // TODO Node name
+        hedera_safe_printf(st_ctx.recipients, "Node %lld",
+                           st_ctx.transaction.data.cryptoUpdateAccount.staked_id
+                               .staked_node_id);
+    }
 }
 
 void reformat_collect_rewards(void) {
@@ -418,25 +445,23 @@ void reformat_updated_account(void) {
 void reformat_account_to_update(void) {
     set_amount_title("Account");
 
-    hedera_safe_printf(st_ctx.amount, "%llu.%llu.%llu",
-                       st_ctx.transaction.data.cryptoUpdateAccount
-                           .accountIDToUpdate.shardNum,
-                       st_ctx.transaction.data.cryptoUpdateAccount
-                           .accountIDToUpdate.realmNum,
-                       st_ctx.transaction.data.cryptoUpdateAccount
-                           .accountIDToUpdate.account.accountNum);
+    hedera_safe_printf(
+        st_ctx.amount, "%llu.%llu.%llu",
+        st_ctx.transaction.data.cryptoUpdateAccount.accountIDToUpdate.shardNum,
+        st_ctx.transaction.data.cryptoUpdateAccount.accountIDToUpdate.realmNum,
+        st_ctx.transaction.data.cryptoUpdateAccount.accountIDToUpdate.account
+            .accountNum);
 }
 
 void reformat_unstake_account_to_update(void) {
     set_amount_title("Unstake account");
 
-    hedera_safe_printf(st_ctx.amount, "%llu.%llu.%llu",
-                       st_ctx.transaction.data.cryptoUpdateAccount
-                           .accountIDToUpdate.shardNum,
-                       st_ctx.transaction.data.cryptoUpdateAccount
-                           .accountIDToUpdate.realmNum,
-                       st_ctx.transaction.data.cryptoUpdateAccount
-                           .accountIDToUpdate.account.accountNum);
+    hedera_safe_printf(
+        st_ctx.amount, "%llu.%llu.%llu",
+        st_ctx.transaction.data.cryptoUpdateAccount.accountIDToUpdate.shardNum,
+        st_ctx.transaction.data.cryptoUpdateAccount.accountIDToUpdate.realmNum,
+        st_ctx.transaction.data.cryptoUpdateAccount.accountIDToUpdate.account
+            .accountNum);
 }
 
 void reformat_amount_balance(void) {
@@ -528,15 +553,19 @@ void reformat_memo(void) {
 // CRYPTO UPDATE specific fields
 
 void reformat_auto_renew_period(void) {
-    
-    if (st_ctx.type == Update && st_ctx.transaction.data.cryptoUpdateAccount.has_autoRenewPeriod) {
-        uint64_t seconds = st_ctx.transaction.data.cryptoUpdateAccount.autoRenewPeriod.seconds;
-        if (seconds >= 86400) {  // Show in days if >= 1 day
-            hedera_safe_printf(st_ctx.auto_renew_period, "%llu days", seconds / 86400);
-        } else if (seconds >= 3600) {  // Show in hours if >= 1 hour
-            hedera_safe_printf(st_ctx.auto_renew_period, "%llu hours", seconds / 3600);
+    if (st_ctx.type == Update &&
+        st_ctx.transaction.data.cryptoUpdateAccount.has_autoRenewPeriod) {
+        uint64_t seconds =
+            st_ctx.transaction.data.cryptoUpdateAccount.autoRenewPeriod.seconds;
+        if (seconds >= 86400) { // Show in days if >= 1 day
+            hedera_safe_printf(st_ctx.auto_renew_period, "%llu days",
+                               seconds / 86400);
+        } else if (seconds >= 3600) { // Show in hours if >= 1 hour
+            hedera_safe_printf(st_ctx.auto_renew_period, "%llu hours",
+                               seconds / 3600);
         } else {
-            hedera_safe_printf(st_ctx.auto_renew_period, "%llu seconds", seconds);
+            hedera_safe_printf(st_ctx.auto_renew_period, "%llu seconds",
+                               seconds);
         }
     } else {
         hedera_safe_printf(st_ctx.auto_renew_period, "-");
@@ -544,31 +573,32 @@ void reformat_auto_renew_period(void) {
 }
 
 void reformat_expiration_time(void) {
-    
-    if (st_ctx.type == Update && st_ctx.transaction.data.cryptoUpdateAccount.has_expirationTime) {
+    if (st_ctx.type == Update &&
+        st_ctx.transaction.data.cryptoUpdateAccount.has_expirationTime) {
         // Show raw timestamp (Unix seconds since epoch)
-        hedera_safe_printf(st_ctx.expiration_time, "%llu", 
-                          st_ctx.transaction.data.cryptoUpdateAccount.expirationTime.seconds);
+        hedera_safe_printf(
+            st_ctx.expiration_time, "%llu",
+            st_ctx.transaction.data.cryptoUpdateAccount.expirationTime.seconds);
     } else {
         hedera_safe_printf(st_ctx.expiration_time, "-");
     }
 }
 
 void reformat_receiver_sig_required(void) {
-    
     if (st_ctx.type == Update) {
-        if (st_ctx.transaction.data.cryptoUpdateAccount.which_receiverSigRequiredField == 
+        if (st_ctx.transaction.data.cryptoUpdateAccount
+                .which_receiverSigRequiredField ==
             Hedera_CryptoUpdateTransactionBody_receiverSigRequiredWrapper_tag) {
-            
-            bool required = st_ctx.transaction.data.cryptoUpdateAccount.receiverSigRequiredField
-                          .receiverSigRequiredWrapper.value;
+            bool required =
+                st_ctx.transaction.data.cryptoUpdateAccount
+                    .receiverSigRequiredField.receiverSigRequiredWrapper.value;
             if (required) {
                 hedera_safe_printf(st_ctx.receiver_sig_required, "Yes");
             } else {
                 hedera_safe_printf(st_ctx.receiver_sig_required, "No");
             }
         } else {
-           hedera_safe_printf(st_ctx.receiver_sig_required, "-");
+            hedera_safe_printf(st_ctx.receiver_sig_required, "-");
         }
     } else {
         hedera_safe_printf(st_ctx.receiver_sig_required, "-");
@@ -576,16 +606,19 @@ void reformat_receiver_sig_required(void) {
 }
 
 void reformat_max_automatic_token_associations(void) {
-    
-    if (st_ctx.type == Update && st_ctx.transaction.data.cryptoUpdateAccount.has_max_automatic_token_associations) {
-        hedera_safe_printf(st_ctx.max_auto_token_assoc, "%d", 
-                          st_ctx.transaction.data.cryptoUpdateAccount.max_automatic_token_associations.value);
+    if (st_ctx.type == Update && st_ctx.transaction.data.cryptoUpdateAccount
+                                     .has_max_automatic_token_associations) {
+        hedera_safe_printf(st_ctx.max_auto_token_assoc, "%d",
+                           st_ctx.transaction.data.cryptoUpdateAccount
+                               .max_automatic_token_associations.value);
     } else {
         hedera_safe_printf(st_ctx.max_auto_token_assoc, "-");
     }
 }
 
 void reformat_collect_rewards_in_stake_flow(void) {
-    bool declineRewards = st_ctx.transaction.data.cryptoCreateAccount.decline_reward;
-    hedera_safe_printf(st_ctx.collect_rewards, "%s", !declineRewards ? "yes" : "no");
+    bool declineRewards =
+        st_ctx.transaction.data.cryptoCreateAccount.decline_reward;
+    hedera_safe_printf(st_ctx.collect_rewards, "%s",
+                       !declineRewards ? "yes" : "no");
 }
