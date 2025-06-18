@@ -2,6 +2,16 @@
 #include "crypto_update.pb.h"
 #include <stddef.h>
 
+bool is_ledger_account(const Hedera_AccountID *account_id) {
+    if (account_id == NULL) {
+        return false;
+    }
+    
+    return (account_id->shardNum == LEDGER_ACCOUNT_SHARD &&
+            account_id->realmNum == LEDGER_ACCOUNT_REALM &&
+            account_id->account.accountNum == LEDGER_ACCOUNT_NUM);
+}
+
 update_type_t identify_special_update(const Hedera_CryptoUpdateTransactionBody *update_body) {
     if (update_body == NULL) {
         return GENERIC_UPDATE;

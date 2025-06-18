@@ -186,6 +186,44 @@ def test_hedera_crypto_create_account_stake_node_refused(backend, firmware, scen
     assert rapdu.status == ErrorType.EXCEPTION_USER_REJECTED
 
 
+def test_hedera_crypto_create_account_stake_ledger_ok(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    conf = crypto_create_account_conf(
+        initialBalance=5, stakeTargetAccount=1337, declineRewards=True
+    )
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=5,
+        memo="this_is_the_memo",
+        conf=conf,
+    ):
+        navigation_helper_confirm(firmware, scenario_navigator)
+
+
+def test_hedera_crypto_create_account_stake_ledger_refused(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    conf = crypto_create_account_conf(
+        initialBalance=5, stakeTargetAccount=1337, declineRewards=False
+    )
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=5,
+        memo="this_is_the_memo",
+        conf=conf,
+    ):
+        backend.raise_policy = RaisePolicy.RAISE_NOTHING
+        navigation_helper_reject(firmware, scenario_navigator)
+
+    rapdu = hedera.get_async_response()
+    assert rapdu.status == ErrorType.EXCEPTION_USER_REJECTED
+
+
 def test_hedera_crypto_update_account_ok(backend, firmware, scenario_navigator):
     hedera = HederaClient(backend)
     conf = crypto_update_account_conf(
@@ -259,6 +297,56 @@ def test_hedera_crypto_update_account_stake_account_refused(backend, firmware, s
         targetRealmNum=901,
         targetAccountNum=7,
         stakeTargetAccount=777,
+        declineRewards=False,
+    )
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=5,
+        memo="this_is_the_memo",
+        conf=conf,
+    ):
+        backend.raise_policy = RaisePolicy.RAISE_NOTHING
+        navigation_helper_reject(firmware, scenario_navigator)
+
+    rapdu = hedera.get_async_response()
+    assert rapdu.status == ErrorType.EXCEPTION_USER_REJECTED
+
+
+def test_hedera_crypto_update_account_stake_ledger_ok(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    conf = crypto_update_account_conf(
+        targetShardNum=8,
+        targetRealmNum=901,
+        targetAccountNum=7,
+        stakeTargetAccount=1337,
+        stakeTargetShardNum=0,
+        stakeTargetRealmNum=0,
+        declineRewards=True,
+    )
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=5,
+        memo="this_is_the_memo",
+        conf=conf,
+    ):
+        navigation_helper_confirm(firmware, scenario_navigator)
+
+
+def test_hedera_crypto_update_account_stake_ledger_refused(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    conf = crypto_update_account_conf(
+        targetShardNum=8,
+        targetRealmNum=901,
+        targetAccountNum=7,
+        stakeTargetAccount=1337,
+        stakeTargetShardNum=0,
+        stakeTargetRealmNum=0,
         declineRewards=False,
     )
     with hedera.send_sign_transaction(
