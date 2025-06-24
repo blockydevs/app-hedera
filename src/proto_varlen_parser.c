@@ -48,6 +48,102 @@ bool parse_field_tag(const uint8_t **data, const uint8_t *end, protobuf_field_t 
     return true;
 }
 
+// Helper function to extract string from StringValue submessage
+static bool extract_string_from_string_value(const uint8_t *sv_data, const uint8_t *sv_end, 
+                                              char *output, size_t output_size) {
+    while (sv_data < sv_end) {
+        uint64_t sv_tag;
+        if (!decode_varint(&sv_data, sv_end, &sv_tag)) {
+            return false;
+        }
+        
+        uint32_t sv_field_num = (uint32_t)(sv_tag >> 3);
+        uint32_t sv_wire_type = (uint32_t)(sv_tag & 7);
+        
+        if (sv_field_num == 1) { // StringValue.value field
+            if (sv_wire_type != WIRE_TYPE_STRING) {
+                return false;
+            }
+            
+            uint64_t string_length;
+            if (!decode_varint(&sv_data, sv_end, &string_length)) {
+                return false;
+            }
+            
+            if (sv_data + string_length > sv_end) {
+                return false;
+            }
+            
+            // Extract string data
+            size_t copy_len = (size_t)string_length;
+            if (copy_len >= output_size) {
+                copy_len = output_size - 1;
+            }
+            
+            // Find null terminator within the string data
+            for (size_t i = 0; i < copy_len; i++) {
+                if (sv_data[i] == '\0') {
+                    copy_len = i;
+                    break;
+                }
+            }
+            
+            memcpy(output, sv_data, copy_len);
+            output[copy_len] = '\0';
+            return true;
+        }
+        
+        // Skip other fields in StringValue
+        if (!skip_field(&sv_data, sv_end, sv_wire_type)) {
+            return false;
+        }
+    }
+    
+    return false; // String value not found
+}
+
+// Helper function to parse CryptoUpdateTransactionBody submessage
+static bool parse_crypto_update_body(const uint8_t *crypto_data, const uint8_t *crypto_end,
+                                      uint32_t field_number, char *output, size_t output_size) {
+    while (crypto_data < crypto_end) {
+        uint64_t crypto_tag;
+        if (!decode_varint(&crypto_data, crypto_end, &crypto_tag)) {
+            return false;
+        }
+        
+        uint32_t crypto_field_num = (uint32_t)(crypto_tag >> 3);
+        uint32_t crypto_wire_type = (uint32_t)(crypto_tag & 7);
+        
+        if (crypto_field_num == field_number) {
+            if (crypto_wire_type != WIRE_TYPE_STRING) {
+                return false;
+            }
+            
+            uint64_t string_value_length;
+            if (!decode_varint(&crypto_data, crypto_end, &string_value_length)) {
+                return false;
+            }
+            
+            if (crypto_data + string_value_length > crypto_end) {
+                return false;
+            }
+            
+            // Parse the StringValue submessage
+            const uint8_t *sv_data = crypto_data;
+            const uint8_t *sv_end = crypto_data + string_value_length;
+            
+            return extract_string_from_string_value(sv_data, sv_end, output, output_size);
+        }
+        
+        // Skip other fields in CryptoUpdateTransactionBody
+        if (!skip_field(&crypto_data, crypto_end, crypto_wire_type)) {
+            return false;
+        }
+    }
+    
+    return false; // Target field not found
+}
+
 // Second-stage protobuf decoder for nested StringValue fields
 bool extract_nested_string_field(const uint8_t *buffer, size_t buffer_size, 
                                   uint32_t field_number, char *output, size_t output_size) {
@@ -61,9 +157,8 @@ bool extract_nested_string_field(const uint8_t *buffer, size_t buffer_size,
     // Clear output buffer
     memset(output, 0, output_size);
     
-    // First stage: find field 15 (cryptoUpdateAccount) in the TransactionBody
+    // Find field 15 (cryptoUpdateAccount) in the TransactionBody
     while (data < end) {
-        // Decode field tag (contains field number and wire type)
         uint64_t tag;
         if (!decode_varint(&data, end, &tag)) {
             return false;
@@ -77,119 +172,25 @@ bool extract_nested_string_field(const uint8_t *buffer, size_t buffer_size,
                 return false;
             }
             
-            // Decode cryptoUpdateAccount submessage length
             uint64_t crypto_update_length;
             if (!decode_varint(&data, end, &crypto_update_length)) {
                 return false;
             }
             
-            // Check bounds
             if (data + crypto_update_length > end) {
                 return false;
             }
             
-            // Second stage: parse the CryptoUpdateTransactionBody submessage to find target field
+            // Parse the CryptoUpdateTransactionBody submessage
             const uint8_t *crypto_data = data;
             const uint8_t *crypto_end = data + crypto_update_length;
             
-            while (crypto_data < crypto_end) {
-                // Decode field tag within CryptoUpdateTransactionBody
-                uint64_t crypto_tag;
-                if (!decode_varint(&crypto_data, crypto_end, &crypto_tag)) {
-                    return false;
-            }
-            
-                uint32_t crypto_field_num = (uint32_t)(crypto_tag >> 3);
-                uint32_t crypto_wire_type = (uint32_t)(crypto_tag & 7);
-                
-                if (crypto_field_num == field_number) { // Found the target field
-                    if (crypto_wire_type != WIRE_TYPE_STRING) {
-                        return false;
-                    }
-                    
-                    // Decode StringValue submessage length
-                    uint64_t string_value_length;
-                    if (!decode_varint(&crypto_data, crypto_end, &string_value_length)) {
-                        return false;
-                    }
-                    
-                    // Check bounds
-                    if (crypto_data + string_value_length > crypto_end) {
-                        return false;
-                    }
-                    
-                    // Third stage: parse the StringValue submessage to find field 1 (the actual string)
-                    const uint8_t *sv_data = crypto_data;
-                    const uint8_t *sv_end = crypto_data + string_value_length;
-                    
-                    while (sv_data < sv_end) {
-                        // Decode field tag within StringValue
-                        uint64_t sv_tag;
-                        if (!decode_varint(&sv_data, sv_end, &sv_tag)) {
-                            return false;
-                        }
-                        
-                        uint32_t sv_field_num = (uint32_t)(sv_tag >> 3);
-                        uint32_t sv_wire_type = (uint32_t)(sv_tag & 7);
-                        
-                        if (sv_field_num == 1) { // StringValue.value field
-                            if (sv_wire_type != WIRE_TYPE_STRING) {
-                                return false;
-                            }
-                            
-                            // Decode string length
-                            uint64_t string_length;
-                            if (!decode_varint(&sv_data, sv_end, &string_length)) {
-                                return false;
-                            }
-                            
-                            // Check bounds
-                            if (sv_data + string_length > sv_end) {
-                                return false;
-                            }
-                            
-                            // Extract string data, stopping at null char or max length
-                            size_t copy_len = (size_t)string_length;
-                            if (copy_len >= output_size) {
-                                copy_len = output_size - 1;
-                            }
-                            
-                            // Find null terminator within the string data
-                            for (size_t i = 0; i < copy_len; i++) {
-                                if (sv_data[i] == '\0') {
-                                    copy_len = i;
-                    break;
-                }
-                            }
-                            
-                            memcpy(output, sv_data, copy_len);
-                            output[copy_len] = '\0';
-                            return true;
-                        } else {
-                            // Skip other fields in StringValue
-                            if (!skip_field(&sv_data, sv_end, sv_wire_type)) {
-                                return false;
-                            }
-                        }
-                    }
-                    
-                    // Target field found but no string value inside
-                    return false;
-                } else {
-                    // Skip other fields in CryptoUpdateTransactionBody
-                    if (!skip_field(&crypto_data, crypto_end, crypto_wire_type)) {
-                        return false;
-                    }
-                }
-            }
-            
-            // cryptoUpdateAccount found but target field not inside
+            return parse_crypto_update_body(crypto_data, crypto_end, field_number, output, output_size);
+        }
+        
+        // Skip other fields
+        if (!skip_field(&data, end, wire_type)) {
             return false;
-        } else {
-            // Skip field based on wire type
-            if (!skip_field(&data, end, wire_type)) {
-                    return false;
-            }
         }
     }
     
