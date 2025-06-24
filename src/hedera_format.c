@@ -1,6 +1,7 @@
 #include "hedera_format.h"
 
 #include "staking.h"
+#include "time_format.h"
 
 #define BUF_SIZE 32
 
@@ -558,16 +559,8 @@ void reformat_auto_renew_period(void) {
         st_ctx.transaction.data.cryptoUpdateAccount.has_autoRenewPeriod) {
         uint64_t seconds =
             st_ctx.transaction.data.cryptoUpdateAccount.autoRenewPeriod.seconds;
-        if (seconds >= 86400) { // Show in days if >= 1 day
-            hedera_safe_printf(st_ctx.auto_renew_period, "%llu days",
-                               seconds / 86400);
-        } else if (seconds >= 3600) { // Show in hours if >= 1 hour
-            hedera_safe_printf(st_ctx.auto_renew_period, "%llu hours",
-                               seconds / 3600);
-        } else {
-            hedera_safe_printf(st_ctx.auto_renew_period, "%llu seconds",
-                               seconds);
-        }
+            
+        format_time_duration(st_ctx.auto_renew_period, sizeof(st_ctx.auto_renew_period), seconds);
     } else {
         hedera_safe_printf(st_ctx.auto_renew_period, "-");
     }
@@ -586,24 +579,24 @@ void reformat_expiration_time(void) {
 }
 
 void reformat_receiver_sig_required(void) {
-    if (st_ctx.type == Update) {
-        if (st_ctx.transaction.data.cryptoUpdateAccount
-                .which_receiverSigRequiredField ==
-            Hedera_CryptoUpdateTransactionBody_receiverSigRequiredWrapper_tag) {
-            bool required =
-                st_ctx.transaction.data.cryptoUpdateAccount
-                    .receiverSigRequiredField.receiverSigRequiredWrapper.value;
-            if (required) {
-                hedera_safe_printf(st_ctx.receiver_sig_required, "Yes");
-            } else {
-                hedera_safe_printf(st_ctx.receiver_sig_required, "No");
-            }
-        } else {
-            hedera_safe_printf(st_ctx.receiver_sig_required, "-");
-        }
-    } else {
+    // Early return for non-Update transactions
+    if (st_ctx.type != Update) {
         hedera_safe_printf(st_ctx.receiver_sig_required, "-");
+        return;
     }
+    
+    // Check if receiver sig required field is not set
+    if (st_ctx.transaction.data.cryptoUpdateAccount.which_receiverSigRequiredField !=
+        Hedera_CryptoUpdateTransactionBody_receiverSigRequiredWrapper_tag) {
+        hedera_safe_printf(st_ctx.receiver_sig_required, "-");
+        return;
+    }
+    
+    // Field is set, get the value and format accordingly
+    bool required = st_ctx.transaction.data.cryptoUpdateAccount
+                        .receiverSigRequiredField.receiverSigRequiredWrapper.value;
+    
+    hedera_safe_printf(st_ctx.receiver_sig_required, required ? "Yes" : "No");
 }
 
 void reformat_max_automatic_token_associations(void) {

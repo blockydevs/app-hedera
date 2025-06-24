@@ -76,18 +76,10 @@ update_type_t identify_special_update(const Hedera_CryptoUpdateTransactionBody *
     bool is_unstake = false;
     
     // Check staking target (account or node)
-    PRINTF("Staked ID: %d\n", update_body->which_staked_id);
     if (update_body->which_staked_id != 0) {
         has_staking_target = true;
         
         if (update_body->which_staked_id == Hedera_CryptoUpdateTransactionBody_staked_account_id_tag) {
-            // Staking to an account - check if it's 0.0.0 (unstaking)
-
-            PRINTF("Staked account ID: %llu.%llu.%llu\n",
-                   update_body->staked_id.staked_account_id.shardNum,
-                   update_body->staked_id.staked_account_id.realmNum,
-                   update_body->staked_id.staked_account_id.account.accountNum);
-
             if (update_body->staked_id.staked_account_id.shardNum == 0 && 
                 update_body->staked_id.staked_account_id.realmNum == 0 && 
                 update_body->staked_id.staked_account_id.account.accountNum == 0) {

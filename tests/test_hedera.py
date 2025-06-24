@@ -549,6 +549,66 @@ def test_hedera_crypto_update_account_key_change_refused(backend, firmware, scen
     assert rapdu.status == ErrorType.EXCEPTION_MALFORMED_APDU
 
 
+
+def test_hedera_crypto_update_account_auto_renew_period_formatting_1(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    conf = crypto_update_account_conf(
+        targetShardNum=5,
+        targetRealmNum=10,
+        targetAccountNum=12345,
+        autoRenewPeriodSeconds=134, # 134 seconds
+    )
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=10,
+        memo="period: 134 seconds",
+        conf=conf,
+    ):
+        navigation_helper_confirm(firmware, scenario_navigator)
+
+def test_hedera_crypto_update_account_auto_renew_period_formatting_2(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    conf = crypto_update_account_conf(
+        targetShardNum=5,
+        targetRealmNum=10,
+        targetAccountNum=12345,
+        autoRenewPeriodSeconds=86400, # 1 day
+    )
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=10,
+        memo="period: 1 day",
+        conf=conf,
+    ):
+        navigation_helper_confirm(firmware, scenario_navigator)
+
+def test_hedera_crypto_update_account_auto_renew_period_formatting_long(backend, firmware, scenario_navigator):
+    hedera = HederaClient(backend)
+    conf = crypto_update_account_conf(
+        targetShardNum=5,
+        targetRealmNum=10,
+        targetAccountNum=12345,
+        autoRenewPeriodSeconds=0x7FFFFFFFFFFFFFFF, # 106751991167300 days 55807 seconds
+    )
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=10,
+        memo="long time period",
+        conf=conf,
+    ):
+        navigation_helper_confirm(firmware, scenario_navigator)
+        
+        
+
 def test_hedera_crypto_update_account_all_fields_ok(backend, firmware, scenario_navigator):
     """Test crypto update with all possible fields set"""
     hedera = HederaClient(backend)
@@ -927,3 +987,4 @@ def test_hedera_transfer_verify_refused(backend, firmware, scenario_navigator):
 
     rapdu = hedera.get_async_response()
     assert rapdu.status == ErrorType.EXCEPTION_USER_REJECTED
+
