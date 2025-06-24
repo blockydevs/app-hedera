@@ -169,8 +169,8 @@ typedef struct sign_tx_context_s {
     // Additional fields for generic crypto update and stake transactions
     // Subtype of crypto update (generic, stake, unstake) - NOT FOR UI - used for choosing the correct UI flow
     update_type_t update_type;
-    // Auto Renew Period
-    char auto_renew_period[DISPLAY_SIZE];
+    // Auto Renew Period (X days Y hours Z seconds)
+    char auto_renew_period[DISPLAY_SIZE*5];
     // Expiration Time
     char expiration_time[DISPLAY_SIZE*2];
     // Receiver Signature Required? (yes / no)
