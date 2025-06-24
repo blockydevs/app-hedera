@@ -29,7 +29,7 @@ APPNAME = Hedera
 
 # Application version
 APPVERSION_M = 1
-APPVERSION_N = 6
+APPVERSION_N = 5
 APPVERSION_P = 1
 APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
@@ -102,9 +102,6 @@ APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/crypto_helpers.c
 
 # Additional include paths
 INCLUDES_PATH += ${BOLOS_SDK}/lib_standard_app $(NANOPB_DIR) .
-
-# Resolve symbol conflicts: prioritize SDK implementations over libc
-LDFLAGS += -Wl,--allow-multiple-definition
 
 include vendor/nanopb/extra/nanopb.mk
 
