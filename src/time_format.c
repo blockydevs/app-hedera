@@ -29,8 +29,8 @@ void format_time_duration(char *buffer, size_t buffer_size, uint64_t seconds) {
         if (pos > 0) {
             pos += hedera_snprintf(temp + pos, sizeof(temp) - pos - 1, " ");
         }
-        pos += hedera_snprintf(temp + pos, sizeof(temp) - pos - 1, "%llu %s", 
-                              final_seconds, final_seconds == 1 ? "second" : "seconds");
+        hedera_snprintf(temp + pos, sizeof(temp) - pos - 1, "%llu %s", 
+                       final_seconds, final_seconds == 1 ? "second" : "seconds");
     }
     PRINTF("temp: %s\n", temp);
     PRINTF("buffer_size: %d\n", buffer_size);

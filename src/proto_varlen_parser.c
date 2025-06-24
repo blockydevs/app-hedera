@@ -6,9 +6,6 @@ static bool skip_field(const uint8_t **data, const uint8_t *end, uint32_t wire_t
 
 // Decode a varint from protobuf data (second-stage decoding)
 static bool decode_varint(const uint8_t **data, const uint8_t *end, uint64_t *result) {
-    if (*data >= end) {
-        return false;
-    }
     
     uint64_t value = 0;
     uint8_t shift = 0;

@@ -732,6 +732,24 @@ UX_DEF(ux_unstake_flow, &summary_token_trans_step, &key_index_step,
 
 #elif defined(HAVE_NBGL)
 
+// Macro to add field to infos array if it's set and not "-"
+#define ADD_INFO_IF_SET(field_value, field_title) \
+    do { \
+        if (strlen(field_value) > 0 && strcmp(field_value, "-") != 0) { \
+            infos[index].item = field_title; \
+            infos[index].value = field_value; \
+            ++index; \
+        } \
+    } while(0)
+
+// Macro to unconditionally add field to infos array
+#define ADD_INFO(field_value, field_title) \
+    do { \
+        infos[index].item = field_title; \
+        infos[index].value = field_value; \
+        ++index; \
+    } while(0)
+
 static void review_choice(bool confirm) {
     // Answer, display a status page and go back to main
     if (confirm) {
@@ -767,156 +785,59 @@ static void create_transaction_flow(void) {
         case Verify:
             // FALLTHROUGH
         case Associate:
-            infos[index].item = st_ctx.senders_title;
-            infos[index].value = st_ctx.senders;
-            ++index;
+            ADD_INFO(st_ctx.senders, st_ctx.senders_title);
             break;
         case Create:
-            infos[index].item = "Operator";
-            infos[index].value = st_ctx.operator;
-            ++index;
-            infos[index].item = st_ctx.amount_title;
-            infos[index].value = st_ctx.amount;
-            ++index;
-            infos[index].item = "Max fees";
-            infos[index].value = st_ctx.fee;
-            ++index;
-            infos[index].item = "Memo";
-            infos[index].value = st_ctx.memo;
-            ++index;
+            ADD_INFO(st_ctx.operator, "Operator");
+            ADD_INFO(st_ctx.amount, st_ctx.amount_title);
+            ADD_INFO(st_ctx.fee, "Max fees");
+            ADD_INFO(st_ctx.memo, "Memo");
             break;
         case Update:
             switch (st_ctx.update_type) {
                 case STAKE_UPDATE:
-                    infos[index].item = "Operator";
-                    infos[index].value = st_ctx.operator;
-                    ++index;
-                    infos[index].item = "Account";
-                    infos[index].value = st_ctx.amount;
-                    ++index;
-                    infos[index].item = "Stake to";
-                    infos[index].value = st_ctx.recipients;
-                    ++index;
-                    if (strlen(st_ctx.collect_rewards) > 0 &&
-                        strcmp(st_ctx.collect_rewards, "-") != 0) {
-                        infos[index].item = "Collect rewards?";
-                        infos[index].value = st_ctx.collect_rewards;
-                        ++index;
-                    }
+                    ADD_INFO(st_ctx.operator, "Operator");
+                    ADD_INFO(st_ctx.amount, "Account");
+                    ADD_INFO(st_ctx.recipients, "Stake to");
+                    ADD_INFO_IF_SET(st_ctx.collect_rewards, "Collect rewards?");
                     break;
                 case UNSTAKE_UPDATE:
-                    infos[index].item = "Operator";
-                    infos[index].value = st_ctx.operator;
-                    ++index;
-                    infos[index].item = "Account";
-                    infos[index].value = st_ctx.amount;
-                    ++index;
-                    if (strlen(st_ctx.collect_rewards) > 0 &&
-                        strcmp(st_ctx.collect_rewards, "-") != 0) {
-                        infos[index].item = "Collect rewards?";
-                        infos[index].value = st_ctx.collect_rewards;
-                        ++index;
-                    }
+                    ADD_INFO(st_ctx.operator, "Operator");
+                    ADD_INFO(st_ctx.amount, "Account");
+                    ADD_INFO_IF_SET(st_ctx.collect_rewards, "Collect rewards?");
                     break;
                 default:
-                    infos[index].item = "Operator";
-                    infos[index].value = st_ctx.operator;
-                    ++index;
-                    if (strlen(st_ctx.senders) > 0 &&
-                        strcmp(st_ctx.senders, "-") != 0) {
-                        infos[index].item = st_ctx.senders_title;
-                        infos[index].value = st_ctx.senders;
-                        ++index;
-                    }
-                    if (strlen(st_ctx.recipients) > 0 &&
-                        strcmp(st_ctx.recipients, "-") != 0) {
-                        infos[index].item = st_ctx.recipients_title;
-                        infos[index].value = st_ctx.recipients;
-                        ++index;
-                    }
-                    if (strlen(st_ctx.amount) > 0 &&
-                        strcmp(st_ctx.amount, "-") != 0) {
-                        infos[index].item = st_ctx.amount_title;
-                        infos[index].value = st_ctx.amount;
-                        ++index;
-                    }
-                    if (strlen(st_ctx.auto_renew_period) > 0 &&
-                        strcmp(st_ctx.auto_renew_period, "-") != 0) {
-                        infos[index].item = "Auto renew period";
-                        infos[index].value = st_ctx.auto_renew_period;
-                        ++index;
-                    }
-                    if (strlen(st_ctx.expiration_time) > 0 &&
-                        strcmp(st_ctx.expiration_time, "-") != 0) {
-                        infos[index].item = "Account expires";
-                        infos[index].value = st_ctx.expiration_time;
-                        ++index;
-                    }
-                    if (strlen(st_ctx.receiver_sig_required) > 0 &&
-                        strcmp(st_ctx.receiver_sig_required, "-") != 0) {
-                        infos[index].item = "Receiver signature required?";
-                        infos[index].value = st_ctx.receiver_sig_required;
-                        ++index;
-                    }
-                    if (strlen(st_ctx.max_auto_token_assoc) > 0 &&
-                        strcmp(st_ctx.max_auto_token_assoc, "-") != 0) {
-                        infos[index].item = "Max auto token association";
-                        infos[index].value = st_ctx.max_auto_token_assoc;
-                        ++index;
-                    }
-                    if (strlen(st_ctx.account_memo) > 0 &&
-                        strcmp(st_ctx.account_memo, "-") != 0) {
-                        infos[index].item = "Account memo";
-                        infos[index].value = st_ctx.account_memo;
-                        ++index;
-                    }
+                    ADD_INFO(st_ctx.operator, "Operator");
+                    ADD_INFO_IF_SET(st_ctx.senders, st_ctx.senders_title);
+                    ADD_INFO_IF_SET(st_ctx.recipients, st_ctx.recipients_title);
+                    ADD_INFO_IF_SET(st_ctx.amount, st_ctx.amount_title);
+                    ADD_INFO_IF_SET(st_ctx.auto_renew_period, "Auto renew period");
+                    ADD_INFO_IF_SET(st_ctx.expiration_time, "Account expires");
+                    ADD_INFO_IF_SET(st_ctx.receiver_sig_required, "Receiver signature required?");
+                    ADD_INFO_IF_SET(st_ctx.max_auto_token_assoc, "Max auto token association");
+                    ADD_INFO_IF_SET(st_ctx.account_memo, "Account memo");
                     if (strlen(st_ctx.memo) > 0) {
-                        infos[index].item = "Memo";
-                        infos[index].value = st_ctx.memo;
-                        ++index;
+                        ADD_INFO(st_ctx.memo, "Memo");
                     }
-                    if (strlen(st_ctx.collect_rewards) > 0 &&
-                        strcmp(st_ctx.collect_rewards, "-") != 0) {
-                        infos[index].item = "Collect rewards?";
-                        infos[index].value = st_ctx.collect_rewards;
-                        ++index;
-                    }
+                    ADD_INFO_IF_SET(st_ctx.collect_rewards, "Collect rewards?");
             }
-            infos[index].item = "Max fees";
-            infos[index].value = st_ctx.fee;
-            ++index;
+            ADD_INFO(st_ctx.fee, "Max fees");
             break;
         case TokenTransfer:
             // FALLTHROUGH
         case Transfer:
-            infos[index].item = "Operator";
-            infos[index].value = st_ctx.operator;
-            ++index;
-            infos[index].item = st_ctx.senders_title;
-            infos[index].value = st_ctx.senders;
-            ++index;
-            infos[index].item = "To";
-            infos[index].value = st_ctx.recipients;
-            ++index;
-            infos[index].item = st_ctx.amount_title;
-            infos[index].value = st_ctx.amount;
-            ++index;
-            infos[index].item = "Max fees";
-            infos[index].value = st_ctx.fee;
-            ++index;
-            infos[index].item = "Memo";
-            infos[index].value = st_ctx.memo;
-            ++index;
+            ADD_INFO(st_ctx.operator, "Operator");
+            ADD_INFO(st_ctx.senders, st_ctx.senders_title);
+            ADD_INFO(st_ctx.recipients, "To");
+            ADD_INFO(st_ctx.amount, st_ctx.amount_title);
+            ADD_INFO(st_ctx.fee, "Max fees");
+            ADD_INFO(st_ctx.memo, "Memo");
             break;
         case TokenMint:
             // FALLTHROUGH
         case TokenBurn:
-            infos[index].item = st_ctx.senders_title;
-            infos[index].value = st_ctx.senders;
-            ++index;
-            infos[index].item = st_ctx.amount_title;
-            infos[index].value = st_ctx.amount;
-            ++index;
+            ADD_INFO(st_ctx.senders, st_ctx.senders_title);
+            ADD_INFO(st_ctx.amount, st_ctx.amount_title);
             break;
         default:
             // Unreachable
