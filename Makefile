@@ -15,26 +15,6 @@
 #  limitations under the License.
 #*******************************************************************************
 
-# Unit test targets (no BOLOS SDK required)
-.PHONY: unit-tests test-unit clean-unit-tests
-
-unit-tests:
-	@echo "Building unit tests..."
-	@mkdir -p tests/unit/build
-	@cd tests/unit/build && cmake .. && make
-
-test-unit: unit-tests
-	@echo "Running unit tests..."
-	@cd tests/unit/build && CTEST_OUTPUT_ON_FAILURE=1 make test
-
-clean-unit-tests:
-	@echo "Cleaning unit tests..."
-	@rm -rf tests/unit/build
-
-# Check if we're running unit tests (no BOLOS SDK needed)
-UNIT_TEST_TARGETS := unit-tests test-unit clean-unit-tests
-ifeq ($(filter $(UNIT_TEST_TARGETS),$(MAKECMDGOALS)),)
-# Not running unit tests, require BOLOS_SDK
 ifeq ($(BOLOS_SDK),)
 $(error Environment variable BOLOS_SDK is not set)
 endif

@@ -28,19 +28,25 @@ Install CMake and CMocka using your package manager.
 
 ## Building Tests
 
-### From project root (recommended)
+### From tests/unit directory (recommended)
 ```sh
+# Install dependencies (Ubuntu/Debian)
+make install-deps
+
 # Build all unit tests
-make unit-tests
+make build
 
 # Run all unit tests
-make test-unit
+make test
 
 # Clean unit test artifacts
-make clean-unit-tests
+make clean
+
+# Show help
+make help
 ```
 
-### From tests/unit directory
+### Manual build (if Makefile not preferred)
 ```sh
 # Create build directory and configure
 mkdir -p build
