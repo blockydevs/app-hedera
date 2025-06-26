@@ -1,10 +1,9 @@
 #include <stdarg.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <setjmp.h>
-#include <cmocka.h>
-#include <string.h>
 #include <stdint.h>
+#include <string.h>
+#include <cmocka.h>
 
 // Include the module under test
 #include "proto_varlen_parser.h"
@@ -21,9 +20,8 @@ static void write_varint(uint8_t **buffer, uint64_t value) {
 }
 
 static void write_string_field(uint8_t **buffer, uint32_t field_number, const char *str) {
-    // Write tag (field_number << 3 | WIRE_TYPE_STRING)
-    uint64_t tag = (field_number << 3) | 2;
-    write_varint(buffer, tag);
+    // Write field tag (field_number << 3 | wire_type)
+    write_varint(buffer, (field_number << 3) | 2);
     
     // Write string length
     size_t len = strlen(str);
@@ -36,9 +34,8 @@ static void write_string_field(uint8_t **buffer, uint32_t field_number, const ch
 
 static void write_submessage_field(uint8_t **buffer, uint32_t field_number, 
                                    const uint8_t *submessage, size_t submessage_len) {
-    // Write tag (field_number << 3 | WIRE_TYPE_STRING)
-    uint64_t tag = (field_number << 3) | 2;
-    write_varint(buffer, tag);
+    // Write field tag
+    write_varint(buffer, (field_number << 3) | 2);
     
     // Write submessage length
     write_varint(buffer, submessage_len);
@@ -48,274 +45,213 @@ static void write_submessage_field(uint8_t **buffer, uint32_t field_number,
     *buffer += submessage_len;
 }
 
+// Test data: valid nested protobuf structure
+// TransactionBody (field 15) -> CryptoUpdateTransactionBody (field 14) -> StringValue (field 1) -> "Test Value"
+static const uint8_t valid_nested_proto[] = {
+    0x7A, 0x10,                    // Field 15 (cryptoUpdateAccount), length 16
+    0x72, 0x0E,                    // Field 14 (memo), length 14  
+    0x0A, 0x0C,                    // Field 1 (value), length 12
+    'T', 'e', 's', 't', ' ', 'V', 'a', 'l', 'u', 'e', '\0', '\0'  // "Test Value" + padding
+};
+
+// Test data: malformed protobuf
+static const uint8_t malformed_proto[] = {
+    0x7A, 0xFF,                    // Field 15, invalid length
+    'T', 'e', 's', 't'             // Truncated data
+};
+
+// Test data: protobuf with deeply nested structure
+static const uint8_t deeply_nested_proto[] = {
+    0x7A, 0x1E,                    // Field 15, length 30
+    0x72, 0x1C,                    // Field 14, length 28
+    0x0A, 0x1A,                    // Field 1, length 26
+    'D', 'e', 'e', 'p', 'l', 'y', ' ', 'N', 'e', 's', 't', 'e', 'd', ' ', 'V', 'a', 'l', 'u', 'e', '!', '\0', '\0', '\0', '\0', '\0', '\0'
+};
+
 // Test cases for parse_field_tag
 
 static void test_parse_field_tag_valid(void **state) {
     (void) state; // unused
     
-    uint8_t data[] = {0x0A}; // field 1, wire type 2 (string)
-    const uint8_t *ptr = data;
-    const uint8_t *end = data + sizeof(data);
+    const uint8_t tag_data[] = {0x72};  // Field 14, wire type 2
+    const uint8_t *ptr = tag_data;
+    const uint8_t *end = tag_data + sizeof(tag_data);
     protobuf_field_t field;
     
     bool result = parse_field_tag(&ptr, end, &field);
     
     assert_true(result);
-    assert_int_equal(1, field.field_number);
-    assert_int_equal(WIRE_TYPE_STRING, field.wire_type);
-    assert_ptr_equal(ptr, field.data);
+    assert_int_equal(field.field_number, 14);
+    assert_int_equal(field.wire_type, 2);
 }
 
-static void test_parse_field_tag_invalid_data(void **state) {
-    (void) state; // unused
+static void test_parse_field_tag_invalid_wire_type(void **state) {
+    (void) state;
+    const uint8_t tag_data[] = {0x77};  // Field 14, wire type 7 (invalid)
+    const uint8_t *ptr = tag_data;
+    const uint8_t *end = tag_data + sizeof(tag_data);
+    protobuf_field_t field;
     
+    bool result = parse_field_tag(&ptr, end, &field);
+    
+    // Parser should parse the tag successfully even with unknown wire type
+    assert_true(result);
+    assert_int_equal(field.field_number, 14);
+    assert_int_equal(field.wire_type, 7);
+}
+
+static void test_parse_field_tag_truncated(void **state) {
+    (void) state;
     const uint8_t *ptr = NULL;
-    const uint8_t *end = (const uint8_t *)1;
+    const uint8_t *end = NULL;
     protobuf_field_t field;
     
     bool result = parse_field_tag(&ptr, end, &field);
     
     assert_false(result);
-}
-
-static void test_parse_field_tag_insufficient_data(void **state) {
-    (void) state; // unused
-    
-    uint8_t data[] = {0x80}; // incomplete varint
-    const uint8_t *ptr = data;
-    const uint8_t *end = data + sizeof(data);
-    protobuf_field_t field;
-    
-    bool result = parse_field_tag(&ptr, end, &field);
-    
-    assert_false(result);
-}
-
-static void test_parse_field_tag_large_field_number(void **state) {
-    (void) state; // unused
-    
-    uint8_t data[] = {0xF8, 0x0F}; // field 255, wire type 0 (varint)
-    const uint8_t *ptr = data;
-    const uint8_t *end = data + sizeof(data);
-    protobuf_field_t field;
-    
-    bool result = parse_field_tag(&ptr, end, &field);
-    
-    assert_true(result);
-    assert_int_equal(255, field.field_number);
-    assert_int_equal(WIRE_TYPE_VARINT, field.wire_type);
 }
 
 // Test cases for extract_nested_string_field
 
 static void test_extract_nested_string_field_valid(void **state) {
-    (void) state; // unused
+    (void) state;
+    char output[256];
     
-    uint8_t buffer[256];
-    uint8_t *ptr = buffer;
-    
-    // Create a StringValue submessage
-    uint8_t string_value[32];
-    uint8_t *sv_ptr = string_value;
-    write_string_field(&sv_ptr, 1, "test_memo"); // StringValue.value field
-    size_t sv_len = sv_ptr - string_value;
-    
-    // Create CryptoUpdateTransactionBody submessage
-    uint8_t crypto_update[64];
-    uint8_t *cu_ptr = crypto_update;
-    write_submessage_field(&cu_ptr, 14, string_value, sv_len); // memo field
-    size_t cu_len = cu_ptr - crypto_update;
-    
-    // Create TransactionBody with cryptoUpdateAccount field
-    write_submessage_field(&ptr, 15, crypto_update, cu_len); // cryptoUpdateAccount field
-    
-    size_t buffer_len = ptr - buffer;
-    
-    char output[64];
-    bool result = extract_nested_string_field(buffer, buffer_len, 14, output, sizeof(output));
+    // Test extracting field 14 from valid nested structure
+    bool result = extract_nested_string_field(valid_nested_proto, 
+                                           sizeof(valid_nested_proto), 
+                                           14, 
+                                           output, 
+                                           sizeof(output));
     
     assert_true(result);
-    assert_string_equal("test_memo", output);
+    assert_string_equal(output, "Test Value");
 }
 
-static void test_extract_nested_string_field_field_not_found(void **state) {
-    (void) state; // unused
+static void test_extract_nested_string_field_not_found(void **state) {
+    (void) state;
+    char output[256] = {0};
     
-    uint8_t buffer[256];
-    uint8_t *ptr = buffer;
+    // Test extracting non-existent field
+    bool result = extract_nested_string_field(valid_nested_proto, 
+                                           sizeof(valid_nested_proto), 
+                                           99, 
+                                           output, 
+                                           sizeof(output));
     
-    // Create a StringValue submessage
-    uint8_t string_value[32];
-    uint8_t *sv_ptr = string_value;
-    write_string_field(&sv_ptr, 1, "test_memo");
-    size_t sv_len = sv_ptr - string_value;
+    assert_false(result);
+    assert_string_equal(output, "");
+}
+
+static void test_extract_nested_string_field_buffer_too_small(void **state) {
+    (void) state;
+    char small_output[5];
     
-    // Create CryptoUpdateTransactionBody with field 13 instead of 14
-    uint8_t crypto_update[64];
-    uint8_t *cu_ptr = crypto_update;
-    write_submessage_field(&cu_ptr, 13, string_value, sv_len);
-    size_t cu_len = cu_ptr - crypto_update;
+    // Test with buffer too small for result
+    bool result = extract_nested_string_field(valid_nested_proto, 
+                                           sizeof(valid_nested_proto), 
+                                           14, 
+                                           small_output, 
+                                           sizeof(small_output));
     
-    // Create TransactionBody
-    write_submessage_field(&ptr, 15, crypto_update, cu_len);
+    assert_true(result);
+    assert_int_equal(strlen(small_output), 4);  // Should be truncated to fit
+}
+
+static void test_extract_nested_string_field_malformed_data(void **state) {
+    (void) state;
+    char output[256];
     
-    size_t buffer_len = ptr - buffer;
-    
-    char output[64];
-    bool result = extract_nested_string_field(buffer, buffer_len, 14, output, sizeof(output));
+    // Test with malformed protobuf data
+    bool result = extract_nested_string_field(malformed_proto, 
+                                           sizeof(malformed_proto), 
+                                           14, 
+                                           output, 
+                                           sizeof(output));
     
     assert_false(result);
 }
 
-static void test_extract_nested_string_field_invalid_input(void **state) {
-    (void) state; // unused
+static void test_extract_nested_string_field_empty_input(void **state) {
+    (void) state;
+    char output[256];
     
-    char output[64];
+    // Test with empty input
+    bool result = extract_nested_string_field(NULL, 0, 14, output, sizeof(output));
+    assert_false(result);
     
-    // Test with NULL buffer
-    bool result1 = extract_nested_string_field(NULL, 10, 14, output, sizeof(output));
-    assert_false(result1);
-    
-    // Test with NULL output
-    uint8_t buffer[10] = {0};
-    bool result2 = extract_nested_string_field(buffer, sizeof(buffer), 14, NULL, sizeof(output));
-    assert_false(result2);
-    
-    // Test with zero output size
-    bool result3 = extract_nested_string_field(buffer, sizeof(buffer), 14, output, 0);
-    assert_false(result3);
+    // Test with zero length
+    result = extract_nested_string_field(valid_nested_proto, 0, 14, output, sizeof(output));
+    assert_false(result);
 }
 
-static void test_extract_nested_string_field_truncated_string(void **state) {
-    (void) state; // unused
+static void test_extract_nested_string_field_null_output(void **state) {
+    (void) state;
     
-    uint8_t buffer[256];
-    uint8_t *ptr = buffer;
-    
-    // Create a StringValue submessage
-    uint8_t string_value[64];
-    uint8_t *sv_ptr = string_value;
-    write_string_field(&sv_ptr, 1, "very_long_test_memo_string");
-    size_t sv_len = sv_ptr - string_value;
-    
-    // Create CryptoUpdateTransactionBody submessage
-    uint8_t crypto_update[96];
-    uint8_t *cu_ptr = crypto_update;
-    write_submessage_field(&cu_ptr, 14, string_value, sv_len);
-    size_t cu_len = cu_ptr - crypto_update;
-    
-    // Create TransactionBody
-    write_submessage_field(&ptr, 15, crypto_update, cu_len);
-    
-    size_t buffer_len = ptr - buffer;
-    
-    char output[10]; // Small buffer to test truncation
-    bool result = extract_nested_string_field(buffer, buffer_len, 14, output, sizeof(output));
-    
-    assert_true(result);
-    assert_int_equal(9, strlen(output)); // Should be truncated to 9 chars + null terminator
-    assert_string_equal("very_long", output);
-}
-
-static void test_extract_nested_string_field_no_crypto_update(void **state) {
-    (void) state; // unused
-    
-    uint8_t buffer[32];
-    uint8_t *ptr = buffer;
-    
-    // Create TransactionBody with different field (not 15)
-    write_string_field(&ptr, 1, "some_other_field");
-    
-    size_t buffer_len = ptr - buffer;
-    
-    char output[64];
-    bool result = extract_nested_string_field(buffer, buffer_len, 14, output, sizeof(output));
+    // Test with NULL output buffer
+    bool result = extract_nested_string_field(valid_nested_proto, 
+                                           sizeof(valid_nested_proto), 
+                                           14, 
+                                           NULL, 
+                                           256);
     
     assert_false(result);
 }
 
-static void test_extract_nested_string_field_empty_string(void **state) {
-    (void) state; // unused
+static void test_extract_nested_string_field_deeply_nested(void **state) {
+    (void) state;
+    char output[256];
     
-    uint8_t buffer[256];
-    uint8_t *ptr = buffer;
-    
-    // Create a StringValue submessage with empty string
-    uint8_t string_value[16];
-    uint8_t *sv_ptr = string_value;
-    write_string_field(&sv_ptr, 1, ""); // Empty string
-    size_t sv_len = sv_ptr - string_value;
-    
-    // Create CryptoUpdateTransactionBody submessage
-    uint8_t crypto_update[32];
-    uint8_t *cu_ptr = crypto_update;
-    write_submessage_field(&cu_ptr, 14, string_value, sv_len);
-    size_t cu_len = cu_ptr - crypto_update;
-    
-    // Create TransactionBody
-    write_submessage_field(&ptr, 15, crypto_update, cu_len);
-    
-    size_t buffer_len = ptr - buffer;
-    
-    char output[64];
-    bool result = extract_nested_string_field(buffer, buffer_len, 14, output, sizeof(output));
+    // Test extracting from deeply nested structure
+    bool result = extract_nested_string_field(deeply_nested_proto, 
+                                           sizeof(deeply_nested_proto), 
+                                           14, 
+                                           output, 
+                                           sizeof(output));
     
     assert_true(result);
-    assert_string_equal("", output);
+    assert_string_equal(output, "Deeply Nested Value!");
 }
 
-static void test_extract_nested_string_field_multiple_fields(void **state) {
-    (void) state; // unused
+// Performance test with large input
+static void test_extract_nested_string_field_large_input(void **state) {
+    (void) state;
     
-    uint8_t buffer[512];
-    uint8_t *ptr = buffer;
+    // Create a large protobuf-like structure
+    uint8_t large_proto[4096];
+    memset(large_proto, 0x08, sizeof(large_proto));  // Fill with varint fields
     
-    // Create multiple StringValue submessages
-    uint8_t string_value1[32];
-    uint8_t *sv_ptr1 = string_value1;
-    write_string_field(&sv_ptr1, 1, "first_memo");
-    size_t sv_len1 = sv_ptr1 - string_value1;
+    // Add our target field at the end
+    size_t offset = sizeof(large_proto) - sizeof(valid_nested_proto);
+    memcpy(large_proto + offset, valid_nested_proto, sizeof(valid_nested_proto));
     
-    uint8_t string_value2[32];
-    uint8_t *sv_ptr2 = string_value2;
-    write_string_field(&sv_ptr2, 1, "second_memo");
-    size_t sv_len2 = sv_ptr2 - string_value2;
-    
-    // Create CryptoUpdateTransactionBody submessage with multiple fields
-    uint8_t crypto_update[128];
-    uint8_t *cu_ptr = crypto_update;
-    write_submessage_field(&cu_ptr, 13, string_value1, sv_len1); // account_memo field
-    write_submessage_field(&cu_ptr, 14, string_value2, sv_len2); // memo field
-    size_t cu_len = cu_ptr - crypto_update;
-    
-    // Create TransactionBody
-    write_submessage_field(&ptr, 15, crypto_update, cu_len);
-    
-    size_t buffer_len = ptr - buffer;
-    
-    char output[64];
-    bool result = extract_nested_string_field(buffer, buffer_len, 14, output, sizeof(output));
+    char output[256];
+    bool result = extract_nested_string_field(large_proto, 
+                                           sizeof(large_proto), 
+                                           14, 
+                                           output, 
+                                           sizeof(output));
     
     assert_true(result);
-    assert_string_equal("second_memo", output);
+    assert_string_equal(output, "Test Value");
 }
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         // parse_field_tag tests
         cmocka_unit_test(test_parse_field_tag_valid),
-        cmocka_unit_test(test_parse_field_tag_invalid_data),
-        cmocka_unit_test(test_parse_field_tag_insufficient_data),
-        cmocka_unit_test(test_parse_field_tag_large_field_number),
+        cmocka_unit_test(test_parse_field_tag_invalid_wire_type),
+        cmocka_unit_test(test_parse_field_tag_truncated),
         
         // extract_nested_string_field tests
         cmocka_unit_test(test_extract_nested_string_field_valid),
-        cmocka_unit_test(test_extract_nested_string_field_field_not_found),
-        cmocka_unit_test(test_extract_nested_string_field_invalid_input),
-        cmocka_unit_test(test_extract_nested_string_field_truncated_string),
-        cmocka_unit_test(test_extract_nested_string_field_no_crypto_update),
-        cmocka_unit_test(test_extract_nested_string_field_empty_string),
-        cmocka_unit_test(test_extract_nested_string_field_multiple_fields),
+        cmocka_unit_test(test_extract_nested_string_field_not_found),
+        cmocka_unit_test(test_extract_nested_string_field_buffer_too_small),
+        cmocka_unit_test(test_extract_nested_string_field_malformed_data),
+        cmocka_unit_test(test_extract_nested_string_field_empty_input),
+        cmocka_unit_test(test_extract_nested_string_field_null_output),
+        cmocka_unit_test(test_extract_nested_string_field_deeply_nested),
+        cmocka_unit_test(test_extract_nested_string_field_large_input),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

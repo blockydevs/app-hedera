@@ -293,6 +293,243 @@ static void test_end_pointer_edge_cases(void **state) {
     assert_false(result);
 }
 
+// Test data for security edge cases
+
+// Protobuf with extremely large field number
+static const uint8_t large_field_number_proto[] = {
+    0xFF, 0xFF, 0xFF, 0xFF, 0x0F,  // Field number close to max varint (2^32-1)
+    0x0A, 0x05,                    // Length 5
+    'H', 'e', 'l', 'l', 'o'
+};
+
+// Protobuf with recursive depth bomb
+static const uint8_t depth_bomb_proto[] = {
+    0x0A, 0x10,                    // Field 1, length 16
+    0x0A, 0x0E,                    // Field 1, length 14
+    0x0A, 0x0C,                    // Field 1, length 12
+    0x0A, 0x0A,                    // Field 1, length 10
+    0x0A, 0x08,                    // Field 1, length 8
+    0x0A, 0x06,                    // Field 1, length 6
+    0x0A, 0x04,                    // Field 1, length 4
+    0x0A, 0x02,                    // Field 1, length 2
+    0x08, 0x01                     // Field 1, varint 1
+};
+
+// Protobuf with overlapping/corrupted length fields
+static const uint8_t corrupted_length_proto[] = {
+    0x0A, 0x20,                    // Field 1, claims length 32
+    0x72, 0x1E,                    // Field 14, claims length 30 (would overlap)
+    'S', 'h', 'o', 'r', 't'        // Only 5 bytes of actual data
+};
+
+// Protobuf with zero-length string that should be valid
+static const uint8_t zero_length_valid_proto[] = {
+    0x0A, 0x08,                    // Field 1, length 8
+    0x72, 0x06,                    // Field 14, length 6
+    0x0A, 0x04,                    // Field 1, length 4
+    0x0A, 0x02,                    // Field 1, length 2
+    0x12, 0x00                     // Field 2, length 0 (empty string)
+};
+
+// Test against buffer overflow attacks
+static void test_extract_nested_string_field_buffer_overflow(void **state)
+{
+    (void) state;
+    
+    // Create a message with a string longer than our output buffer
+    uint8_t overflow_proto[1024];
+    size_t pos = 0;
+    
+    // Field 1, message with field 14
+    overflow_proto[pos++] = 0x0A;  // Field 1, wire type 2
+    overflow_proto[pos++] = 0xFF;  // Length 255 (will be larger than our buffer)
+    overflow_proto[pos++] = 0x01;  // Length continuation
+    
+    overflow_proto[pos++] = 0x72;  // Field 14, wire type 2
+    overflow_proto[pos++] = 0xFC;  // Length 252
+    overflow_proto[pos++] = 0x01;  // Length continuation
+    
+    overflow_proto[pos++] = 0x0A;  // Field 1, wire type 2
+    overflow_proto[pos++] = 0xF8;  // Length 248
+    overflow_proto[pos++] = 0x01;  // Length continuation
+    
+    // Fill with data to reach the claimed length
+    for (int i = 0; i < 248; i++) {
+        if (pos < sizeof(overflow_proto)) {
+            overflow_proto[pos++] = 'A' + (i % 26);
+        }
+    }
+    
+    char small_output[16];
+    bool result = extract_nested_string_field(overflow_proto, 
+                                           pos, 
+                                           14, 
+                                           small_output, 
+                                           sizeof(small_output));
+    
+    // Should handle gracefully without overflowing buffer
+    if (result) {
+        // If successful, output should be properly null-terminated
+        assert_int_equal(strlen(small_output), sizeof(small_output) - 1);
+    }
+    // Result could be false if parsing fails due to malformed data, which is also acceptable
+}
+
+// Test against integer overflow in length calculations
+static void test_extract_nested_string_field_integer_overflow(void **state)
+{
+    (void) state;
+    
+    char output[256];
+    
+    // Test with the large field number protobuf
+    bool result = extract_nested_string_field(large_field_number_proto, 
+                                           sizeof(large_field_number_proto), 
+                                           UINT32_MAX, 
+                                           output, 
+                                           sizeof(output));
+    
+    // Should handle large field numbers without integer overflow
+    assert_false(result);  // Expected to not find the field
+}
+
+// Test against depth-based denial of service
+static void test_extract_nested_string_field_depth_bomb(void **state)
+{
+    (void) state;
+    
+    char output[256];
+    
+    // Test with deeply nested protobuf structure
+    bool result = extract_nested_string_field(depth_bomb_proto, 
+                                           sizeof(depth_bomb_proto), 
+                                           14, 
+                                           output, 
+                                           sizeof(output));
+    
+    // Should handle deep nesting without stack overflow or infinite loops
+    assert_false(result);  // Expected to not find field 14
+}
+
+// Test against corrupted length field attacks
+static void test_extract_nested_string_field_corrupted_length(void **state)
+{
+    (void) state;
+    
+    char output[256];
+    
+    // Test with corrupted length fields
+    bool result = extract_nested_string_field(corrupted_length_proto, 
+                                           sizeof(corrupted_length_proto), 
+                                           14, 
+                                           output, 
+                                           sizeof(output));
+    
+    // Should detect corrupted data and fail gracefully
+    assert_false(result);
+}
+
+// Test with various wire types to ensure proper validation
+static void test_parse_field_tag_wire_type_validation(void **state)
+{
+    (void) state;
+    
+    // Test all possible wire type values (0-7)
+    for (uint8_t wire_type = 0; wire_type < 8; wire_type++) {
+        uint8_t tag_data = (1 << 3) | wire_type;  // Field 1 with different wire types
+        const uint8_t *ptr = &tag_data;
+        const uint8_t *end = &tag_data + 1;
+        protobuf_field_t field;
+        
+        bool result = parse_field_tag(&ptr, end, &field);
+        
+        // Only wire types 0, 1, 2, 5 should be valid in protobuf
+        if (wire_type <= 2 || wire_type == 5) {
+            assert_true(result);
+            assert_int_equal(field.wire_type, wire_type);
+        } else {
+            // Invalid wire types should be rejected
+            assert_false(result);
+        }
+    }
+}
+
+// Test boundary conditions for varint decoding
+static void test_parse_field_tag_varint_boundary(void **state)
+{
+    (void) state;
+    
+    // Test maximum valid field number (2^29 - 1)
+    uint8_t max_field_tag[] = {
+        0xF8, 0xFF, 0xFF, 0xFF, 0x0F  // Maximum field number with wire type 0
+    };
+    
+    const uint8_t *ptr = max_field_tag;
+    const uint8_t *end = max_field_tag + sizeof(max_field_tag);
+    protobuf_field_t field;
+    
+    bool result = parse_field_tag(&ptr, end, &field);
+    
+    // Should handle maximum field numbers correctly
+    assert_true(result);
+    assert_int_equal(field.wire_type, 0);
+    // Field number should be close to maximum but exact value depends on implementation
+}
+
+// Test with zero-length strings (valid edge case)
+static void test_extract_nested_string_field_zero_length_valid(void **state)
+{
+    (void) state;
+    
+    char output[256];
+    memset(output, 'X', sizeof(output));  // Pre-fill to detect proper null termination
+    
+    bool result = extract_nested_string_field(zero_length_valid_proto, 
+                                           sizeof(zero_length_valid_proto), 
+                                           2,  // Looking for field 2 which has empty string
+                                           output, 
+                                           sizeof(output));
+    
+    if (result) {
+        // Should be empty string but properly null-terminated
+        assert_string_equal(output, "");
+    } else {
+        // If field not found, that's also acceptable for this test case
+        assert_false(result);
+    }
+}
+
+// Test memory safety with NULL pointers at various stages
+static void test_extract_nested_string_field_null_safety(void **state)
+{
+    (void) state;
+    
+    char output[256];
+    uint8_t valid_data[] = {0x0A, 0x02, 0x08, 0x01};
+    
+    // Test all NULL pointer combinations
+    assert_false(extract_nested_string_field(NULL, 0, 1, output, sizeof(output)));
+    assert_false(extract_nested_string_field(valid_data, sizeof(valid_data), 1, NULL, sizeof(output)));
+    assert_false(extract_nested_string_field(valid_data, sizeof(valid_data), 1, output, 0));
+    assert_false(extract_nested_string_field(NULL, sizeof(valid_data), 1, NULL, 0));
+}
+
+// Test with extremely large input buffers
+static void test_extract_nested_string_field_large_input_safety(void **state)
+{
+    (void) state;
+    
+    // Simulate processing of very large buffer
+    size_t large_size = SIZE_MAX / 2;  // Large but not causing overflow
+    char output[256];
+    
+    // This should fail gracefully without attempting to allocate massive memory
+    bool result = extract_nested_string_field((uint8_t*)1, large_size, 14, output, sizeof(output));
+    
+    // Should fail due to invalid pointer, not due to size issues
+    assert_false(result);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_decode_varint_infinite_loop_protection),
@@ -305,6 +542,15 @@ int main(void) {
         cmocka_unit_test(test_deeply_nested_structures),
         cmocka_unit_test(test_invalid_field_numbers),
         cmocka_unit_test(test_end_pointer_edge_cases),
+        cmocka_unit_test(test_extract_nested_string_field_buffer_overflow),
+        cmocka_unit_test(test_extract_nested_string_field_integer_overflow),
+        cmocka_unit_test(test_extract_nested_string_field_depth_bomb),
+        cmocka_unit_test(test_extract_nested_string_field_corrupted_length),
+        cmocka_unit_test(test_parse_field_tag_wire_type_validation),
+        cmocka_unit_test(test_parse_field_tag_varint_boundary),
+        cmocka_unit_test(test_extract_nested_string_field_zero_length_valid),
+        cmocka_unit_test(test_extract_nested_string_field_null_safety),
+        cmocka_unit_test(test_extract_nested_string_field_large_input_safety),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

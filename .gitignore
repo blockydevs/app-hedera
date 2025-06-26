@@ -15,3 +15,24 @@ tests/snapshots-tmp/
 
 # Internal tools used by the team
 test_tools/
+
+# Fuzzing artifacts and build outputs
+fuzzing/build/
+fuzzing/artifacts/
+fuzzing/corpus/proto_varlen_parser/
+*.o
+*.so
+*.exe
+fuzz_*
+*_fuzz
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Sanitizer logs
+*asan*
+*ubsan*
+*msan*
