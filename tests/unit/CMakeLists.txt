@@ -1,8 +1,27 @@
 cmake_minimum_required(VERSION 3.10)
 project(ledger-app-hedera-unit-tests C)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(CMOCKA REQUIRED cmocka)
+# Try to find PkgConfig and CMocka
+find_package(PkgConfig)
+if(PkgConfig_FOUND)
+    pkg_check_modules(CMOCKA cmocka)
+endif()
+
+# If CMocka not found via pkg-config, try find_library
+if(NOT CMOCKA_FOUND)
+    find_library(CMOCKA_LIBRARIES cmocka)
+    find_path(CMOCKA_INCLUDE_DIRS cmocka.h)
+    if(CMOCKA_LIBRARIES AND CMOCKA_INCLUDE_DIRS)
+        set(CMOCKA_FOUND TRUE)
+        set(CMOCKA_CFLAGS_OTHER "")
+        set(CMOCKA_LIBRARY_DIRS "")
+    endif()
+endif()
+
+# Error if CMocka still not found
+if(NOT CMOCKA_FOUND)
+    message(FATAL_ERROR "CMocka not found. Please install libcmocka-dev (Ubuntu/Debian) or cmocka (other systems)")
+endif()
 
 enable_testing()
 include(CTest)
