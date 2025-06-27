@@ -46,3 +46,40 @@ jobs:
           apt-get update && apt-get install -y cmake libcmocka-dev pkg-config
       - name: Build and run unit tests
         run: make -C tests/unit test
+
+  fuzzing_tests:
+    name: Fuzzing tests
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
+    steps:
+      - name: Clone
+        uses: actions/checkout@v3
+      - name: Install fuzzing dependencies
+        run: |
+          apt-get update && apt-get install -y \
+            clang \
+            cmake \
+            build-essential \
+            pkg-config \
+            libc6-dev \
+            timeout
+      - name: Build fuzzers
+        run: |
+          cd fuzzing
+          chmod +x run_fuzzing.sh
+          ./run_fuzzing.sh build
+      - name: Run fuzzing tests
+        run: |
+          cd fuzzing
+          # Run short fuzzing campaign for CI (30 seconds per fuzzer)
+          FUZZ_TIME=30 timeout 300 ./run_fuzzing.sh || true
+      - name: Upload fuzzing artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: fuzzing-artifacts
+          path: |
+            fuzzing/artifacts/
+            fuzzing/fuzzing_report.txt
+          retention-days: 30
