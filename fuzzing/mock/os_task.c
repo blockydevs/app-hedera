@@ -36,4 +36,4 @@ void os_perso_derive_node_bip32(cx_curve_t curve,
     if (chain_code) {
         memset(chain_code, 0x84, 32);
     }
-} 
+}

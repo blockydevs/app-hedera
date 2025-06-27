@@ -102,4 +102,4 @@ void THROW(unsigned int exception);
 
 // Memory management
 void* os_malloc(size_t size);
-void os_free(void* ptr); 
+void os_free(void* ptr);

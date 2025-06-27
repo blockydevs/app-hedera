@@ -40,7 +40,7 @@ jobs:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install unit test dependencies
         run: |
           apt-get update && apt-get install -y cmake libcmocka-dev pkg-config
@@ -54,7 +54,7 @@ jobs:
       image: ghcr.io/ledgerhq/ledger-app-builder/ledger-app-builder-lite:latest
     steps:
       - name: Clone
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Install fuzzing dependencies
         run: |
           apt-get update && apt-get install -y \
@@ -76,7 +76,7 @@ jobs:
           FUZZ_TIME=30 timeout 300 ./run_fuzzing.sh || true
       - name: Upload fuzzing artifacts
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: fuzzing-artifacts
           path: |
