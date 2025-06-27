@@ -44,6 +44,10 @@ jobs:
       - name: Install unit test dependencies
         run: |
           apt-get update && apt-get install -y cmake libcmocka-dev pkg-config
+      - name: Configure unit tests
+        run: |
+          cd tests/unit
+          cmake .
       - name: Build unit tests
         run: make -C tests/unit
       - name: Run unit tests

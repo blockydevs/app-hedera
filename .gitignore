@@ -35,6 +35,9 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 Makefile
+CTestTestfile.cmake
+DartConfiguration.tcl
+Testing/
 
 # Sanitizer logs
 *asan*
