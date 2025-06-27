@@ -62,8 +62,7 @@ jobs:
             cmake \
             build-essential \
             pkg-config \
-            libc6-dev \
-            timeout
+            libc6-dev
       - name: Build fuzzers
         run: |
           cd fuzzing
