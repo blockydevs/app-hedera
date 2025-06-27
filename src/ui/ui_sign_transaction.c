@@ -801,31 +801,24 @@ static void create_transaction_flow(void) {
 
     switch (st_ctx.type) {
         case Verify:
-            // FALLTHROUGH
-        case Associate:
             ADD_INFO(st_ctx.senders, st_ctx.senders_title);
             break;
         case Associate:
             if (st_ctx.token_known) {
-                infos[index].item = "Token";
-                infos[index].value = st_ctx.token_ticker;
-                ++index;
-                infos[index].item = "Token ID";
-                infos[index].value = st_ctx.token_address_str;
-                ++index;
+                ADD_INFO(st_ctx.token_ticker, "Token");
+                ADD_INFO(st_ctx.token_address_str, "Token ID");
             }
             else {
-                infos[index].item = "Token";
-                infos[index].value = st_ctx.token_address_str;
-                ++index;
+                ADD_INFO(st_ctx.token_address_str, "Token");
             }
-            infos[index].item = "Max fees";
-            infos[index].value = st_ctx.fee;
-            ++index;
+            ADD_INFO(st_ctx.fee, "Max fees");
             break;
         case Create:
             ADD_INFO(st_ctx.operator, "Operator");
             ADD_INFO(st_ctx.amount, st_ctx.amount_title);
+            if (st_ctx.type == TokenTransfer) {
+                ADD_INFO(st_ctx.token_address_str, "Token ID");
+            }
             ADD_INFO(st_ctx.fee, "Max fees");
             ADD_INFO(st_ctx.memo, "Memo");
             break;
@@ -866,6 +859,9 @@ static void create_transaction_flow(void) {
             ADD_INFO(st_ctx.senders, st_ctx.senders_title);
             ADD_INFO(st_ctx.recipients, "To");
             ADD_INFO(st_ctx.amount, st_ctx.amount_title);
+            if (st_ctx.type == TokenTransfer) {
+                ADD_INFO(st_ctx.token_address_str, "Token ID");
+            }
             ADD_INFO(st_ctx.fee, "Max fees");
             ADD_INFO(st_ctx.memo, "Memo");
             break;

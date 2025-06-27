@@ -205,6 +205,7 @@ void handle_transaction_body() {
         case Hedera_TransactionBody_tokenDissociate_tag:
             st_ctx.type = Dissociate;
             reformat_summary("Dissociate Token");
+#endif
 
 #if !defined(TARGET_NANOS)
             token_addr_t dissociate_token_address = {
