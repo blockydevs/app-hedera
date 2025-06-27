@@ -44,7 +44,9 @@ jobs:
       - name: Install unit test dependencies
         run: |
           apt-get update && apt-get install -y cmake libcmocka-dev pkg-config
-      - name: Build and run unit tests
+      - name: Build unit tests
+        run: make -C tests/unit
+      - name: Run unit tests
         run: make -C tests/unit test
 
   fuzzing_tests:
@@ -62,7 +64,8 @@ jobs:
             cmake \
             build-essential \
             pkg-config \
-            libc6-dev
+            libc6-dev \
+            libclang-rt-dev
       - name: Build fuzzers
         run: |
           cd fuzzing

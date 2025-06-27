@@ -20,9 +20,10 @@ test_tools/
 fuzzing/build/
 fuzzing/artifacts/
 fuzzing/corpus/proto_varlen_parser/
-tests/test_proto_varlen_parser
-tests/test_proto_varlen_edge_cases
-tests/test_proto_varlen_security
+tests/unit/test_proto_varlen_parser
+tests/unit/test_proto_varlen_edge_cases
+tests/unit/test_proto_varlen_security
+tests/unit/Testing/
 *.o
 *.so
 *.exe

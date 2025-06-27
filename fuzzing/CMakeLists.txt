@@ -11,9 +11,24 @@ set(CMAKE_CPP_COMPILER clang)
 set(CMAKE_BUILD_TYPE "Debug")
 
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_FLAGS
-    "${CMAKE_C_FLAGS} -Wall -Wextra -pedantic -DFUZZ -g -O0 -fsanitize=fuzzer,address,undefined"
+# Check if address sanitizer runtime is available
+execute_process(
+    COMMAND ${CMAKE_C_COMPILER} -fsanitize=address -xc /dev/null -o /dev/null
+    RESULT_VARIABLE ASAN_CHECK_RESULT
+    ERROR_QUIET
 )
+
+if(ASAN_CHECK_RESULT EQUAL 0)
+    message(STATUS "AddressSanitizer available - building with ASAN")
+    set(CMAKE_C_FLAGS
+        "${CMAKE_C_FLAGS} -Wall -Wextra -pedantic -DFUZZ -g -O0 -fsanitize=fuzzer,address,undefined"
+    )
+else()
+    message(WARNING "AddressSanitizer runtime not available, building without ASAN")
+    set(CMAKE_C_FLAGS
+        "${CMAKE_C_FLAGS} -Wall -Wextra -pedantic -DFUZZ -g -O0 -fsanitize=fuzzer,undefined"
+    )
+endif()
 
 include_directories(
   ../src/
