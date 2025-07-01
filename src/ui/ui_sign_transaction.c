@@ -198,9 +198,9 @@ static const bagl_element_t ui_tx_deny_step[] = {
     UI_ICON(LINE_2_ID, 0, 24, 128, BAGL_GLYPH_ICON_CROSS)};
 
 // Step 1: Transaction Summary
-unsigned int ui_tx_summary_step_button(
-    unsigned int button_mask,
-    unsigned int __attribute__((unused)) button_mask_counter) {
+unsigned int ui_tx_summary_step_button(unsigned int button_mask,
+                                       unsigned int __attribute__((unused))
+                                       button_mask_counter) {
     switch (button_mask) {
         case BUTTON_EVT_RELEASED | BUTTON_RIGHT:
             if (st_ctx.type == Verify) { // Verify skips to Senders
@@ -658,6 +658,15 @@ UX_STEP_NOCB(recipients_step, bnnn_paging,
              {.title = (char*)st_ctx.recipients_title,
               .text = (char*)st_ctx.recipients});
 
+UX_STEP_NOCB(token_addr_step, bnnn_paging,
+             {.title = "Token ID", .text = (char*)st_ctx.token_address_str});
+
+UX_STEP_NOCB(token_name_step, bnnn_paging,
+             {.title = "Associate Token", .text = (char*)st_ctx.token_ticker});
+
+UX_STEP_NOCB(token_name_addr_step, bnnn_paging,
+             {.title = "Associate Token", .text = (char*)st_ctx.senders});
+
 UX_STEP_NOCB(amount_step, bnnn_paging,
              {.title = (char*)st_ctx.amount_title,
               .text = (char*)st_ctx.amount});
@@ -701,6 +710,11 @@ UX_STEP_VALID(reject_step, pb, io_seproxyhal_tx_reject(NULL),
 UX_DEF(ux_transfer_flow, &summary_token_trans_step, &key_index_step, &operator_step, &senders_step,
        &recipients_step, &amount_step, &fee_step, &memo_step, &confirm_step, &reject_step);
 
+// Transfer Token UX Flow
+UX_DEF(ux_transfer_flow_token, &summary_token_trans_step, &key_index_step, &operator_step, &senders_step,
+       &recipients_step, &amount_step, &token_addr_step,  &fee_step, &memo_step,
+       &confirm_step, &reject_step);
+
 // Verify UX Flow
 UX_DEF(ux_verify_flow, &summary_step, &senders_step, &confirm_step,
        &reject_step);
@@ -710,8 +724,12 @@ UX_DEF(ux_burn_mint_flow, &summary_step, &operator_step, &senders_step,
        &amount_step, &fee_step, &memo_step, &confirm_step, &reject_step);
 
 // Associate UX Flow
-UX_DEF(ux_associate_flow, &summary_step, &operator_step, &senders_step,
-       &fee_step, &memo_step, &confirm_step, &reject_step);
+UX_DEF(ux_associate_flow, &summary_token_trans_step, &key_index_step, &token_name_addr_step,
+       &fee_step, &confirm_step, &reject_step);
+
+// Associate Known Token UX Flow
+UX_DEF(ux_associate_known_token_flow, &summary_token_trans_step, &key_index_step, &token_name_step, &token_addr_step,
+       &fee_step, &confirm_step, &reject_step);
 
 // Update UX Flow
 UX_DEF(ux_update_flow, &summary_step, &operator_step, &senders_step,
@@ -783,13 +801,24 @@ static void create_transaction_flow(void) {
 
     switch (st_ctx.type) {
         case Verify:
-            // FALLTHROUGH
-        case Associate:
             ADD_INFO(st_ctx.senders, st_ctx.senders_title);
+            break;
+        case Associate:
+            if (st_ctx.token_known) {
+                ADD_INFO(st_ctx.token_ticker, "Token");
+                ADD_INFO(st_ctx.token_address_str, "Token ID");
+            }
+            else {
+                ADD_INFO(st_ctx.token_address_str, "Token");
+            }
+            ADD_INFO(st_ctx.fee, "Max fees");
             break;
         case Create:
             ADD_INFO(st_ctx.operator, "Operator");
             ADD_INFO(st_ctx.amount, st_ctx.amount_title);
+            if (st_ctx.type == TokenTransfer) {
+                ADD_INFO(st_ctx.token_address_str, "Token ID");
+            }
             ADD_INFO(st_ctx.fee, "Max fees");
             ADD_INFO(st_ctx.memo, "Memo");
             break;
@@ -830,6 +859,9 @@ static void create_transaction_flow(void) {
             ADD_INFO(st_ctx.senders, st_ctx.senders_title);
             ADD_INFO(st_ctx.recipients, "To");
             ADD_INFO(st_ctx.amount, st_ctx.amount_title);
+            if (st_ctx.type == TokenTransfer) {
+                ADD_INFO(st_ctx.token_address_str, "Token ID");
+            }
             ADD_INFO(st_ctx.fee, "Max fees");
             ADD_INFO(st_ctx.memo, "Memo");
             break;
@@ -869,7 +901,11 @@ void ui_sign_transaction(void) {
         case Associate:
             // FALLTHROUGH
         case Dissociate:
-            ux_flow_init(0, ux_associate_flow, NULL);
+            if (st_ctx.token_known) {
+                ux_flow_init(0, ux_associate_known_token_flow, NULL);
+            } else {
+                ux_flow_init(0, ux_associate_flow, NULL);
+            }
             break;
         case Verify:
             ux_flow_init(0, ux_verify_flow, NULL);
@@ -889,10 +925,11 @@ void ui_sign_transaction(void) {
             break;
         case Create:
             // FALLTHROUGH
-        case TokenTransfer:
-            // FALLTHROUGH
         case Transfer:
             ux_flow_init(0, ux_transfer_flow, NULL);
+            break;
+        case TokenTransfer:
+            ux_flow_init(0, ux_transfer_flow_token, NULL);
             break;
         case TokenMint:
             // FALLTHROUGH

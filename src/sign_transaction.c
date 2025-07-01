@@ -1,7 +1,21 @@
 #include "sign_transaction.h"
 #include "proto_varlen_parser.h"
 
+#include "tokens/cal/token_lookup.h"
+
 sign_tx_context_t st_ctx;
+
+#if !defined(TARGET_NANOS)
+static void parse_and_lookup_token(token_addr_t* token_addr) {
+    // Parse token address to string
+    address_to_string(token_addr, st_ctx.token_address_str);
+
+    // Get info about token
+    st_ctx.token_known = token_info_get_by_address(
+        *token_addr, st_ctx.token_ticker, st_ctx.token_name,
+        &st_ctx.token_decimals);
+}
+#endif
 
 // Validates whether or not a transfer is legal:
 // Either a transfer between two accounts
@@ -97,8 +111,11 @@ void handle_transaction_body() {
     MEMCLEAR(st_ctx.fee);
     MEMCLEAR(st_ctx.amount);
     MEMCLEAR(st_ctx.memo);
-    
-    // Clear crypto update specific fields
+    MEMCLEAR(st_ctx.token_decimals);
+    MEMCLEAR(st_ctx.token_name);
+    MEMCLEAR(st_ctx.token_ticker);
+    MEMCLEAR(st_ctx.token_address_str);
+    MEMCLEAR(st_ctx.token_known);
     MEMCLEAR(st_ctx.auto_renew_period);
     MEMCLEAR(st_ctx.expiration_time);
     MEMCLEAR(st_ctx.receiver_sig_required);
@@ -170,19 +187,33 @@ void handle_transaction_body() {
                     break;
             }
             break;
-
+            
         case Hedera_TransactionBody_tokenAssociate_tag:
             st_ctx.type = Associate;
-            reformat_summary("Associate Token");
+            reformat_summary("associate token");
 
+#if !defined(TARGET_NANOS)
+            token_addr_t associate_token_address = {
+                st_ctx.transaction.data.tokenAssociate.tokens[0].shardNum,
+                st_ctx.transaction.data.tokenAssociate.tokens[0].realmNum,
+                st_ctx.transaction.data.tokenAssociate.tokens[0].tokenNum,
+            };
+            parse_and_lookup_token(&associate_token_address);
             reformat_token_associate();
             break;
 
         case Hedera_TransactionBody_tokenDissociate_tag:
             st_ctx.type = Dissociate;
             reformat_summary("Dissociate Token");
+#endif
 
 #if !defined(TARGET_NANOS)
+            token_addr_t dissociate_token_address = {
+                st_ctx.transaction.data.tokenDissociate.tokens[0].shardNum,
+                st_ctx.transaction.data.tokenDissociate.tokens[0].realmNum,
+                st_ctx.transaction.data.tokenDissociate.tokens[0].tokenNum,
+            };
+            parse_and_lookup_token(&dissociate_token_address);
             reformat_token_dissociate();
 #endif
             break;
@@ -241,8 +272,17 @@ void handle_transaction_body() {
 
             } else if (is_token_transfer()) {
                 st_ctx.type = TokenTransfer;
-                reformat_summary_send_token();
 
+                token_addr_t token_address = {
+                    st_ctx.transaction.data.cryptoTransfer.tokenTransfers[0]
+                        .token.shardNum,
+                    st_ctx.transaction.data.cryptoTransfer.tokenTransfers[0]
+                        .token.realmNum,
+                    st_ctx.transaction.data.cryptoTransfer.tokenTransfers[0]
+                        .token.tokenNum,
+                };
+                parse_and_lookup_token(&token_address);
+                reformat_summary_send_token();
                 // Determine Sender based on amount
                 st_ctx.transfer_from_index = 0;
                 st_ctx.transfer_to_index = 1;

@@ -15,6 +15,8 @@
 #include "transaction_body.pb.h"
 #include "ui_common.h"
 #include "utils.h"
+#include "tokens/cal/token_lookup.h"
+#include "tokens/token_address.h"
 #include "staking.h"
 
 enum TransactionStep {
@@ -156,6 +158,14 @@ typedef struct sign_tx_context_s {
     // Transaction Memo
     char memo[MAX_MEMO_SIZE + 1];
 
+    // Is known token 
+    bool token_known;
+
+    // Optional Token Info
+    char token_ticker[MAX_TICKER_LENG];
+    uint32_t token_decimals;
+    char token_name[MAX_TOKEN_LEN];
+    char token_address_str[MAX_HEDERA_ADDRESS_LENGTH*2 + 1];
     // Additional fields for generic crypto update and stake transactions
     // Subtype of crypto update (generic, stake, unstake) - NOT FOR UI - used for choosing the correct UI flow
     update_type_t update_type;

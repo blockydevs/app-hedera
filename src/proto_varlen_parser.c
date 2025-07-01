@@ -1,38 +1,26 @@
 #include "proto_varlen_parser.h"
 #include <string.h>
-#include <stdint.h>
 
 // Forward declaration
 static bool skip_field(const uint8_t **data, const uint8_t *end, uint32_t wire_type);
 
 // Decode a varint from protobuf data (second-stage decoding)
 static bool decode_varint(const uint8_t **data, const uint8_t *end, uint64_t *result) {
-    if (!data || !*data || !end || !result) {
-        return false;
-    }
     
     uint64_t value = 0;
     uint8_t shift = 0;
     uint8_t byte;
     
     do {
-        // Check bounds BEFORE reading the byte
         if (*data >= end) {
             return false;
         }
-        
-        // Check for varint overflow (max 10 bytes for 64-bit)
         if (shift >= 64) {
-            return false;
+            return false; // Varint overflow
         }
         
         byte = **data;
         (*data)++;
-        
-        // Prevent integer overflow in shift operation
-        if (shift >= 63 && (byte & 0x7F) > 1) {
-            return false; // Would overflow uint64_t
-        }
         
         value |= (uint64_t)(byte & 0x7F) << shift;
         shift += 7;
@@ -82,10 +70,7 @@ static bool extract_string_from_string_value(const uint8_t *sv_data, const uint8
                 return false;
             }
             
-            // Check for integer overflow and bounds
-            if (string_length > SIZE_MAX || 
-                string_length > (size_t)(sv_end - sv_data) ||
-                sv_data + string_length > sv_end) {
+            if (sv_data + string_length > sv_end) {
                 return false;
             }
             
@@ -139,10 +124,7 @@ static bool parse_crypto_update_body(const uint8_t *crypto_data, const uint8_t *
                 return false;
             }
             
-            // Check for integer overflow and bounds
-            if (string_value_length > SIZE_MAX || 
-                string_value_length > (size_t)(crypto_end - crypto_data) ||
-                crypto_data + string_value_length > crypto_end) {
+            if (crypto_data + string_value_length > crypto_end) {
                 return false;
             }
             
@@ -195,10 +177,7 @@ bool extract_nested_string_field(const uint8_t *buffer, size_t buffer_size,
                 return false;
             }
             
-            // Check for integer overflow and bounds
-            if (crypto_update_length > SIZE_MAX || 
-                crypto_update_length > (size_t)(end - data) ||
-                data + crypto_update_length > end) {
+            if (data + crypto_update_length > end) {
                 return false;
             }
             
@@ -239,10 +218,7 @@ static bool skip_field(const uint8_t **data, const uint8_t *end, uint32_t wire_t
             if (!decode_varint(data, end, &length)) {
                 return false;
             }
-            // Check for integer overflow and bounds
-            if (length > SIZE_MAX || 
-                length > (size_t)(end - *data) ||
-                *data + length > end) {
+            if (*data + length > end) {
                 return false;
             }
             *data += length;
