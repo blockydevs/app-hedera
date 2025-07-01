@@ -89,3 +89,4 @@ jobs:
             fuzzing/artifacts/
             fuzzing/fuzzing_report.txt
           retention-days: 30
+        
