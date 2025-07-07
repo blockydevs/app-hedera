@@ -358,7 +358,6 @@ void handle_sign_transaction(uint8_t p1, uint8_t p2, uint8_t* buffer,
     pb_istream_t stream =
         pb_istream_from_buffer(raw_transaction, raw_transaction_length);
 
-   
     // Decode the Transaction
     if (!pb_decode(&stream, Hedera_TransactionBody_fields,
                    &st_ctx.transaction)) {

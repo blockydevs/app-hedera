@@ -182,7 +182,8 @@ typedef struct sign_tx_context_s {
     // Collect Rewards? (yes / no)
     char collect_rewards[6];
     // Account Memo
-    // Important: This is whole account memo, not the memo field in the transaction body
+    // Important: This is a whole account memo, not the memo field in the transaction body
+    // Currently hedera limits memo to 100 characters
     char account_memo[100];
 #endif
 
