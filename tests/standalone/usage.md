@@ -27,8 +27,8 @@ exit
 ### Run a simple test using the Speculos emulator
 
 You can use the following command to get your first experience with Ragger and Speculos
-```
-pytest -v --tb=short --device nanox --display
+```bash
+python3 -m pytest -v --tb=short tests/standalone/ --device nanox --display
 ```
 Or you can refer to the section `Available pytest options` to configure the options you want to use
 
@@ -47,8 +47,9 @@ exit
 
 You can use the following command to get your first experience with Ragger and Ledgerwallet on a NANOX.
 Make sure that the device is plugged, unlocked, and that the tested application is open.
-```
-pytest -v --tb=short --device nanox --backend ledgerwallet
+```bash
+pip install ragger[ledgercomm]
+python3 -m pytest -v --tb=short tests/standalone/ --device nanox --backend ledgercomm
 ```
 Or you can refer to the section `Available pytest options` to configure the options you want to use
 
