@@ -4,11 +4,11 @@ from pathlib import Path
 
 base = Path(__file__).parent.resolve() / ".test_dependencies"
 
-APP_EXCHANGE_URL = "git@github.com:LedgerHQ/app-exchange.git"
+APP_EXCHANGE_URL = "https://github.com/LedgerHQ/app-exchange"
 APP_EXCHANGE_DIR = base / "main/app-exchange/"
 APP_EXCHANGE_CLONE_DIR = base / "app-exchange/"
 
-APP_ETHEREUM_URL = "git@github.com:LedgerHQ/app-ethereum.git"
+APP_ETHEREUM_URL = "https://github.com/LedgerHQ/app-ethereum"
 APP_ETHEREUM_DIR = base / "libraries/app-ethereum/"
 APP_ETHEREUM_CLONE_DIR = base / "app-ethereum/"
 
@@ -99,5 +99,5 @@ def build_and_copy_exchange():
 def clone_and_pull_ethereum():
     clone_or_pull(APP_ETHEREUM_URL, APP_ETHEREUM_CLONE_DIR)
 def build_and_copy_ethereum():
-    build_app(APP_ETHEREUM_CLONE_DIR, flags="COIN=ethereum CHAIN=ethereum CAL_TEST_KEY=1 DOMAIN_NAME_TEST_KEY=1 SET_PLUGIN_TEST_KEY=1 NFT_TEST_KEY=1 TRUSTED_NAME_TEST_KEY=1")
+    build_app(APP_ETHEREUM_CLONE_DIR, flags="DEBUG=1 COIN=ethereum CHAIN=ethereum CAL_TEST_KEY=1 DOMAIN_NAME_TEST_KEY=1 SET_PLUGIN_TEST_KEY=1 NFT_TEST_KEY=1 TRUSTED_NAME_TEST_KEY=1")
     copy_build_output(APP_ETHEREUM_CLONE_DIR, APP_ETHEREUM_DIR)

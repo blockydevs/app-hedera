@@ -112,15 +112,36 @@ Then you can test your app either with the Speculos emulator :
 bash$ speculos build/nanos/bin/app.elf --model nanos
 ```
 
-Or you can run your Ragger functional tests if you have implemented them :
+Or you can run your Ragger functional tests:
 
+## Tests
+### Ragger Functional / Standalone Tests
+In the Docker container:
 ```bash
-# Creating a virtualenv so that the non-root user can install Python dependencies
-bash$ python -m virtualenv venv --system-site-package
-bash$ source ./venv/bin/activate
-# Install tests dependencies
-(venv) bash$ pip install -r tests/requirements.txt
-# Run ragger functional tests
-(venv) bash$ python -m pytest tests/ --tb=short -v --device nanos --display
+# In the root directory
+python3 -m pip install -r tests/standalone/requirements.txt 
+python3 -m pytest --tb=short -v tests/standalone/ --device <<device>>
 ```
 
+### Ragger Swap tests
+Install dependencies:
+#### On host machine (wihout Docker)
+```bash
+# In the root directory
+sudo apt-get install ssh git python3-venv
+python3 -m venv venv --system-site-package
+pip3 install GitPython ledgered
+python3 tests/swap/helper_tool_clone_dependencies.py
+```
+#### In Docker
+```bash
+# In the root directory
+python3 tests/swap/helper_tool_build_dependencies.py 
+```
+
+Run swap tests (in Docker):
+```bash
+# In the root directory
+python3 -m pip install -r tests/swap/requirements.txt 
+python3 -m pytest --tb=short -v tests/swap/ --device <<device>> 
+```
