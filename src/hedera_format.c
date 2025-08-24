@@ -11,6 +11,12 @@ static char *hedera_format_amount(uint64_t amount, uint8_t decimals) {
     // NOTE: format of amounts are not sensitive
     memset(buf, 0, BUF_SIZE);
 
+    PRINTF(
+        "\nBuffer contents: %02x %02x %02x %02x %02x %02x %02x %02x %02x "
+        "%02x\n",
+        buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8],
+        buf[9]);
+
     // Quick shortcut if the amount is zero
     // Regardless of decimals, the output is always "0"
     if (amount == 0) {
@@ -25,6 +31,7 @@ static char *hedera_format_amount(uint64_t amount, uint8_t decimals) {
     if (decimals >= 20) return buf;
 
     int i = 0;
+    bool contain_decimal_place = false;
 
     while (i < (BUF_SIZE - 1) && (amount > 0 || i < decimals)) {
         int digit = amount % 10;
@@ -34,6 +41,7 @@ static char *hedera_format_amount(uint64_t amount, uint8_t decimals) {
 
         if (i == decimals) {
             buf[i++] = '.';
+            contain_decimal_place = true;
         }
     }
 
@@ -41,9 +49,14 @@ static char *hedera_format_amount(uint64_t amount, uint8_t decimals) {
         buf[i++] = '0';
     }
 
+    PRINTF(
+        "Buffer contents: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+        buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8],
+        buf[9]);
+
     int size = i;
     int j = 0;
-    char tmp;
+    char tmp = 0;
 
     while (j < i) {
         i -= 1;
@@ -53,6 +66,18 @@ static char *hedera_format_amount(uint64_t amount, uint8_t decimals) {
         buf[i] = tmp;
 
         j += 1;
+    }
+    PRINTF(
+        "Buffer contents: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+        buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8],
+        buf[9]);
+
+    PRINTF("pre J: %d\n", j);
+
+    if (!contain_decimal_place) {
+        // We can skip trimming decimal place
+        PRINTF("Skip trimming decimal place\n");
+        return buf;
     }
 
     for (j = size - 1; j > 0; j--) {
@@ -66,9 +91,20 @@ static char *hedera_format_amount(uint64_t amount, uint8_t decimals) {
         }
     }
 
+    PRINTF(
+        "Buffer contents: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+        buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8],
+        buf[9]);
+
+    PRINTF("J: %d\n", j);
     if (j < size - 1) {
         buf[j] = '\0';
     }
+
+    PRINTF(
+        "Buffer contents: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+        buf[0], buf[1], buf[2], buf[3], buf[4], buf[5], buf[6], buf[7], buf[8],
+        buf[9]);
 
     return buf;
 }
@@ -96,7 +132,8 @@ static void validate_memo(const char memo[100]) {
 
 void reformat_key(void) {
 #if defined(TARGET_NANOX) || defined(TARGET_NANOS2) || defined(TARGET_NANOS)
-    hedera_safe_printf(st_ctx.summary_line_2, "with Key #%u?", st_ctx.key_index);
+    hedera_safe_printf(st_ctx.summary_line_2, "with Key #%u?",
+                       st_ctx.key_index);
 #elif defined(TARGET_STAX) || defined(TARGET_FLEX)
     hedera_safe_printf(st_ctx.summary_line_2, "#%u", st_ctx.key_index);
 #endif
@@ -115,12 +152,10 @@ void reformat_summary(const char *summary) {
 }
 
 void reformat_summary_send_token(void) {
-    hedera_safe_printf(st_ctx.summary_line_1, "send tokens");   
+    hedera_safe_printf(st_ctx.summary_line_1, "send tokens");
 }
 
 // TITLES
-
-
 
 static void set_senders_title(const char *title) {
     // st_ctx.senders_title --> st_ctx.title (NANOS)
@@ -289,7 +324,7 @@ void address_to_string(const token_addr_t *addr,
     if (addr == NULL || buf == NULL) {
         return;
     }
-    
+
     hedera_snprintf(buf, MAX_HEDERA_ADDRESS_LENGTH, "%llu.%llu.%llu",
                     addr->addr_shard, addr->addr_realm, addr->addr_account);
 }
@@ -539,8 +574,9 @@ void reformat_auto_renew_period(void) {
         st_ctx.transaction.data.cryptoUpdateAccount.has_autoRenewPeriod) {
         uint64_t seconds =
             st_ctx.transaction.data.cryptoUpdateAccount.autoRenewPeriod.seconds;
-            
-        format_time_duration(st_ctx.auto_renew_period, sizeof(st_ctx.auto_renew_period), seconds);
+
+        format_time_duration(st_ctx.auto_renew_period,
+                             sizeof(st_ctx.auto_renew_period), seconds);
     } else {
         hedera_safe_printf(st_ctx.auto_renew_period, "-");
     }
@@ -564,18 +600,20 @@ void reformat_receiver_sig_required(void) {
         hedera_safe_printf(st_ctx.receiver_sig_required, "-");
         return;
     }
-    
+
     // Check if receiver sig required field is not set
-    if (st_ctx.transaction.data.cryptoUpdateAccount.which_receiverSigRequiredField !=
+    if (st_ctx.transaction.data.cryptoUpdateAccount
+            .which_receiverSigRequiredField !=
         Hedera_CryptoUpdateTransactionBody_receiverSigRequiredWrapper_tag) {
         hedera_safe_printf(st_ctx.receiver_sig_required, "-");
         return;
     }
-    
+
     // Field is set, get the value and format accordingly
-    bool required = st_ctx.transaction.data.cryptoUpdateAccount
-                        .receiverSigRequiredField.receiverSigRequiredWrapper.value;
-    
+    bool required =
+        st_ctx.transaction.data.cryptoUpdateAccount.receiverSigRequiredField
+            .receiverSigRequiredWrapper.value;
+
     hedera_safe_printf(st_ctx.receiver_sig_required, required ? "Yes" : "No");
 }
 
