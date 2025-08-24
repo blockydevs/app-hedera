@@ -52,6 +52,18 @@ static char *hedera_format_amount(uint64_t amount, uint8_t decimals) {
         j += 1;
     }
 
+    /* MINIMAL FIX:
+       If there is no fractional part (decimals == 0), do NOT run the trailing-zero
+       trimming routine — just terminate and return the string as-is.
+       This avoids the case where trimming loop would set buf[0] = '\0'. */
+    if (decimals == 0) {
+        if (size < BUF_SIZE) buf[size] = '\0';
+        else buf[BUF_SIZE - 1] = '\0';
+        return buf;
+    }
+
+    /* trim trailing zeros from fractional part (right side),
+       but leave at least one digit before the decimal point if needed */
     for (j = size - 1; j > 0; j--) {
         if (buf[j] == '0') {
             continue;
