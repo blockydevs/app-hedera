@@ -15,7 +15,7 @@
 #define ERC20_WARNING_TEXT_BASE \
     "The transaction will show the recipient EVM address instead.\n" \
     "Carefully check they match.\n" \
-    "Learn more: ledger.com/why-we-cant-show-Hedera-ID.html"
+    "Learn more: ledger.com/e14"
 
 #ifdef HAVE_NBGL
     #define ERC20_ADDRESS_WARNING_CONTENT (ERC20_WARNING_TEXT_BASE "\n\n")
