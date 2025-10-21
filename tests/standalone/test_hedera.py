@@ -1264,15 +1264,15 @@ def test_hedera_erc20_transfer_good_signature_contract_evm_address(backend, firm
 def test_hedera_erc20_known_by_evm_address(backend, firmware, navigator, scenario_navigator, test_name):
     hedera = HederaClient(backend)
 
-    # Use test token from CAL: BD (has only EVM address in CAL)
+    # Use test token from CAL: amUSDC (Bonzo aToken USDC)
     key_index = 0
     to_address = "123456789abcdef0112233445566778899aabbcc"
-    amount = 1233219 * 10**14 # 123.3219 BD
+    amount = 1233219 * 10**18 # 123.3219 amUSDC (18 decimals)
 
     params = encode_erc20_transfer_web3(to_address, amount)
 
     # EVM contract address from CAL entry (20 bytes)
-    evm_addr = bytes.fromhex("915fE7c00730C08708581E30e27d9c0605bE40BD")
+    evm_addr = bytes.fromhex("b7687538c7f4cad022d5e97cc778d0b46457c5db")
 
     conf = contract_call_conf(
         gas=100000,
@@ -1287,7 +1287,7 @@ def test_hedera_erc20_known_by_evm_address(backend, firmware, navigator, scenari
         operator_realm_num=2,
         operator_account_num=3,
         transaction_fee=5,
-        memo="ERC20 known evm",
+        memo="ERC20 amUSDC evm",
         conf=conf,
     ):
         navigate_erc20_confirm(firmware, navigator, scenario_navigator, ROOT_SCREENSHOT_PATH, test_name)
@@ -1299,10 +1299,10 @@ def test_hedera_erc20_known_by_evm_address(backend, firmware, navigator, scenari
 def test_hedera_erc20_known_by_hedera_id(backend, firmware, navigator, scenario_navigator, test_name):
     hedera = HederaClient(backend)
 
-    # Use test token from CAL: TSC (has Hedera ID only)
+    # Use test token from CAL: amUSDC (Bonzo aToken USDC)
     key_index = 1
     to_address = "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
-    amount = 10**8 + 1
+    amount = 10**18 + 1 # 1.000000000000000001 amUSDC (18 decimals)
 
     params = encode_erc20_transfer_web3(to_address, amount)
 
@@ -1312,7 +1312,7 @@ def test_hedera_erc20_known_by_hedera_id(backend, firmware, navigator, scenario_
         function_parameters=params,
         contract_shard_num=0,
         contract_realm_num=0,
-        contract_num=2085473,
+        contract_num=7308496,
     )
 
     with hedera.send_sign_transaction(
