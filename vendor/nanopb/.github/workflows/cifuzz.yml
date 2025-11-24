@@ -1,17 +1,7 @@
-name: CIFuzz
+name: Run CIFuzz fuzz test for 10 minutes
 on:
-  push:
-    branches:
-      - master
-    paths:
-      - '**.c'
-      - '**.h'
-  pull_request:
-    branches:
-      - master
-    paths:
-      - '**.c'
-      - '**.h'
+  workflow_dispatch:
+  workflow_call:
 
 jobs:
   Fuzzing:
@@ -32,7 +22,7 @@ jobs:
           dry-run: false
           sanitizer: undefined
       - name: Upload Crash
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         if: failure() && steps.build.outcome == 'success'
         with:
           name: artifacts
