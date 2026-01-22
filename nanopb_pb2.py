@@ -1,1 +1,1 @@
-proto/nanopb_pb2.py
+from proto.nanopb_pb2 import * 
