@@ -54,7 +54,7 @@ static unsigned int ui_get_public_key_compare_button(
             UX_REDISPLAY();
             break;
         case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // Continue
-            ui_idle();
+            UX_DISPLAY(ui_get_public_key_approve, NULL);
             break;
     }
     return 0;
@@ -93,7 +93,7 @@ static unsigned int ui_get_public_key_approve_button(
 
         case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
             io_exchange_with_code(EXCEPTION_OK, 32);
-            compare_pk();
+            ui_idle();
             break;
 
         default:
@@ -105,7 +105,9 @@ static unsigned int ui_get_public_key_approve_button(
 
 #elif defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 
-UX_STEP_CB(ux_compare_pk_flow_1_step, bnnn_paging, ui_idle(),
+static void ui_get_public_key_approve_flow(void);
+
+UX_STEP_CB(ux_compare_pk_flow_1_step, bnnn_paging, ui_get_public_key_approve_flow(),
            {.title = "Public Key", .text = (char *)gpk_ctx.full_key});
 
 UX_DEF(ux_compare_pk_flow, &ux_compare_pk_flow_1_step);
@@ -114,7 +116,7 @@ static void compare_pk() { ux_flow_init(0, ux_compare_pk_flow, NULL); }
 
 static unsigned int pk_approved() {
     io_exchange_with_code(EXCEPTION_OK, 32);
-    compare_pk();
+    ui_idle();
     return 0;
 }
 
@@ -135,6 +137,10 @@ UX_STEP_VALID(ux_approve_pk_flow_3_step, pb, pk_rejected(),
 
 UX_DEF(ux_approve_pk_flow, &ux_approve_pk_flow_1_step,
        &ux_approve_pk_flow_2_step, &ux_approve_pk_flow_3_step);
+
+static void ui_get_public_key_approve_flow(void) {
+    ux_flow_init(0, ux_approve_pk_flow, NULL);
+}
 
 #elif defined(HAVE_NBGL)
 
@@ -162,11 +168,11 @@ static void ui_get_public_key_nbgl(void) {
 void ui_get_public_key(void) {
 #if defined(TARGET_NANOS)
 
-    UX_DISPLAY(ui_get_public_key_approve, NULL);
+    compare_pk();
 
 #elif defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 
-    ux_flow_init(0, ux_approve_pk_flow, NULL);
+    compare_pk();
 
 #elif defined(HAVE_NBGL)
 
