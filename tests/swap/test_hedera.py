@@ -41,7 +41,8 @@ class HederaTests(ExchangeTestRunner):
 
 class HederaTestsMinAmount(HederaTests):
     valid_send_amount_1 = 1
-    valid_fees_1 = 0
+    valid_fees_1 = 1
+
     def perform_final_tx(self, destination, send_amount, fees, memo):
         hedera = HederaClient(self.backend)
 
@@ -106,5 +107,5 @@ class TestsHedera:
     @pytest.mark.parametrize('test_to_run', ALL_TESTS_EXCEPT_MEMO_AND_THORSWAP)
     def tests_hedera(self, backend, exchange_navigation_helper, test_to_run):
         HederaTests(backend, exchange_navigation_helper).run_test(test_to_run)
-    def tests_hedera_min_amount(self, backend, exchange_navigation_helper):
-        HederaTestsMinAmount(backend, exchange_navigation_helper).run_test("swap_valid_1")
+    def tests_hedera_min_amount(self, backend, exchange_navigation_helper, test_to_run):
+        HederaTestsMinAmount(backend, exchange_navigation_helper).run_test(test_to_run)
