@@ -2013,3 +2013,61 @@ def test_hedera_erc20_show_qr_code(backend, firmware, navigator, scenario_naviga
 
     rapdu = hedera.get_async_response()
     assert rapdu.status == STATUS_OK
+
+def test_hedera_erc20_memo_max_length(backend, firmware, navigator, scenario_navigator, test_name):
+    hedera = HederaClient(backend)
+    to_address = "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
+    token_amount = 1
+    params = encode_erc20_transfer_web3(to_address, token_amount)
+    conf = contract_call_conf(
+        gas=100000,
+        amount=0,
+        function_parameters=params,
+        contract_shard_num=1,
+        contract_realm_num=2,
+        contract_num=3,
+    )
+
+    max_memo = "a" * 99  # max length from proto (memo max_size = 100)
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=5,
+        memo=max_memo,
+        conf=conf,
+    ):
+        navigate_erc20_confirm(firmware, navigator, scenario_navigator, ROOT_SCREENSHOT_PATH, test_name)
+
+    rapdu = hedera.get_async_response()
+    assert rapdu.status == STATUS_OK
+
+
+def test_hedera_erc20_memo_empty(backend, firmware, navigator, scenario_navigator, test_name):
+    hedera = HederaClient(backend)
+    to_address = "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
+    token_amount = 1
+    params = encode_erc20_transfer_web3(to_address, token_amount)
+    conf = contract_call_conf(
+        gas=100000,
+        amount=0,
+        function_parameters=params,
+        contract_shard_num=1,
+        contract_realm_num=2,
+        contract_num=3,
+    )
+
+    with hedera.send_sign_transaction(
+        index=0,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=5,
+        memo="",
+        conf=conf,
+    ):
+        navigate_erc20_confirm(firmware, navigator, scenario_navigator, ROOT_SCREENSHOT_PATH, test_name)
+
+    rapdu = hedera.get_async_response()
+    assert rapdu.status == STATUS_OK
