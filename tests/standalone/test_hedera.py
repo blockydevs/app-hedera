@@ -44,10 +44,18 @@ def test_hedera_get_public_key_ok(backend, firmware, navigator, test_name):
         assert from_public_key.hex() == key
         with hedera.get_public_key_confirm(index):
             if firmware.device == "nanos":
-                nav_ins = [NavInsID.RIGHT_CLICK]
+                nav_ins = [
+                    NavInsID.RIGHT_CLICK,
+                    NavInsID.BOTH_CLICK,
+                    NavInsID.RIGHT_CLICK,
+                ]
             elif backend.firmware.device.startswith("nano"):
-                nav_ins = [NavInsID.RIGHT_CLICK,
-                           NavInsID.BOTH_CLICK]
+                nav_ins = [
+                    NavInsID.RIGHT_CLICK,
+                    NavInsID.BOTH_CLICK,
+                    NavInsID.RIGHT_CLICK,
+                    NavInsID.BOTH_CLICK,
+                ]
             else:
                 nav_ins = [NavInsID.USE_CASE_REVIEW_NEXT,
                            NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CONFIRM]
@@ -61,14 +69,24 @@ def test_hedera_get_public_key_refused(backend, firmware, navigator, test_name):
     hedera = HederaClient(backend)
     with hedera.get_public_key_confirm(0):
         if firmware.device == "nanos":
-            nav_ins = [NavInsID.LEFT_CLICK]
+            nav_ins = [
+                NavInsID.RIGHT_CLICK,
+                NavInsID.BOTH_CLICK,
+                NavInsID.LEFT_CLICK,
+            ]
         elif backend.firmware.device.startswith("nano"):
-            nav_ins = [NavInsID.RIGHT_CLICK,
-                       NavInsID.RIGHT_CLICK,
-                       NavInsID.BOTH_CLICK]
+            nav_ins = [
+                NavInsID.RIGHT_CLICK,
+                NavInsID.BOTH_CLICK,
+                NavInsID.RIGHT_CLICK,
+                NavInsID.RIGHT_CLICK,
+                NavInsID.BOTH_CLICK,
+            ]
         else:
-            nav_ins = [NavInsID.USE_CASE_REVIEW_NEXT,
-                           NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CANCEL]
+            nav_ins = [
+                NavInsID.USE_CASE_REVIEW_NEXT,
+                NavInsID.USE_CASE_ADDRESS_CONFIRMATION_CANCEL,
+            ]
         backend.raise_policy = RaisePolicy.RAISE_NOTHING
         navigator.navigate_and_compare(ROOT_SCREENSHOT_PATH, test_name, nav_ins)
 
