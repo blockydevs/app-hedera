@@ -14,7 +14,7 @@ static bool load_descriptor_values(pb_field_iter_t *iter)
     if (iter->index >= iter->descriptor->field_count)
         return false;
 
-    word0 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index]);
+    word0 = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index]);
     iter->type = (pb_type_t)((word0 >> 8) & 0xFF);
 
     switch(word0 & 3)
@@ -31,7 +31,7 @@ static bool load_descriptor_values(pb_field_iter_t *iter)
 
         case 1: {
             /* 2-word format */
-            uint32_t word1 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 1]);
+            uint32_t word1 = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index + 1]);
 
             iter->array_size = (pb_size_t)((word0 >> 16) & 0x0FFF);
             iter->tag = (pb_size_t)(((word0 >> 2) & 0x3F) | ((word1 >> 28) << 6));
@@ -43,9 +43,9 @@ static bool load_descriptor_values(pb_field_iter_t *iter)
 
         case 2: {
             /* 4-word format */
-            uint32_t word1 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 1]);
-            uint32_t word2 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 2]);
-            uint32_t word3 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 3]);
+            uint32_t word1 = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index + 1]);
+            uint32_t word2 = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index + 2]);
+            uint32_t word3 = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index + 3]);
 
             iter->array_size = (pb_size_t)(word0 >> 16);
             iter->tag = (pb_size_t)(((word0 >> 2) & 0x3F) | ((word1 >> 8) << 6));
@@ -57,10 +57,10 @@ static bool load_descriptor_values(pb_field_iter_t *iter)
 
         default: {
             /* 8-word format */
-            uint32_t word1 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 1]);
-            uint32_t word2 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 2]);
-            uint32_t word3 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 3]);
-            uint32_t word4 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 4]);            
+            uint32_t word1 = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index + 1]);
+            uint32_t word2 = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index + 2]);
+            uint32_t word3 = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index + 3]);
+            uint32_t word4 = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index + 4]);
 
             iter->array_size = (pb_size_t)word4;
             iter->tag = (pb_size_t)(((word0 >> 2) & 0x3F) | ((word1 >> 8) << 6));
@@ -109,7 +109,7 @@ static bool load_descriptor_values(pb_field_iter_t *iter)
 
     if (PB_LTYPE_IS_SUBMSG(iter->type))
     {
-        iter->submsg_desc = PIC(((const pb_msgdesc_t * const *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->submsg_info))[iter->submessage_index]);
+        iter->submsg_desc = iter->descriptor->submsg_info[iter->submessage_index];
     }
     else
     {
@@ -139,7 +139,7 @@ static void advance_iterator(pb_field_iter_t *iter)
          * - bits 2..7 give the lowest bits of tag number.
          * - bits 8..15 give the field type.
          */
-        uint32_t prev_descriptor = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index]);
+        uint32_t prev_descriptor = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index]);
         pb_type_t prev_type = (prev_descriptor >> 8) & 0xFF;
         pb_size_t descriptor_len = (pb_size_t)(1 << (prev_descriptor & 3));
 
@@ -157,7 +157,7 @@ bool pb_field_iter_begin(pb_field_iter_t *iter, const pb_msgdesc_t *desc, void *
 {
     memset(iter, 0, sizeof(*iter));
 
-    iter->descriptor = PIC(desc);
+    iter->descriptor = desc;
     iter->message = message;
 
     return load_descriptor_values(iter);
@@ -221,7 +221,7 @@ bool pb_field_iter_find(pb_field_iter_t *iter, uint32_t tag)
             advance_iterator(iter);
 
             /* Do fast check for tag number match */
-            fieldinfo = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index]);
+            fieldinfo = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index]);
 
             if (((fieldinfo >> 2) & 0x3F) == (tag & 0x3F))
             {
@@ -260,7 +260,8 @@ bool pb_field_iter_find_extension(pb_field_iter_t *iter)
             advance_iterator(iter);
 
             /* Do fast check for field type */
-            fieldinfo = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index]);
+            fieldinfo = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index]);
+
             if (PB_LTYPE((fieldinfo >> 8) & 0xFF) == PB_LTYPE_EXTENSION)
             {
                 return load_descriptor_values(iter);
