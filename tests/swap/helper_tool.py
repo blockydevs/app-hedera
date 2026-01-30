@@ -4,11 +4,11 @@ from pathlib import Path
 
 base = Path(__file__).parent.resolve() / ".test_dependencies"
 
-APP_EXCHANGE_URL = "git@github.com:LedgerHQ/app-exchange.git"
+APP_EXCHANGE_URL = "https://github.com/LedgerHQ/app-exchange.git"
 APP_EXCHANGE_DIR = base / "main/app-exchange/"
 APP_EXCHANGE_CLONE_DIR = base / "app-exchange/"
 
-APP_ETHEREUM_URL = "git@github.com:LedgerHQ/app-ethereum.git"
+APP_ETHEREUM_URL = "https://github.com/LedgerHQ/app-ethereum.git"
 APP_ETHEREUM_DIR = base / "libraries/app-ethereum/"
 APP_ETHEREUM_CLONE_DIR = base / "app-ethereum/"
 
@@ -59,15 +59,33 @@ def run_cmd(cmd: str,
 
     return ret.stdout.strip()
 
+def ensure_https_git():
+    # Force HTTPS for all GitHub SSH URLs (incl. submodules)
+    run_cmd('git config --global url."https://github.com/".insteadOf git@github.com:')
+    run_cmd('git config --global url."https://github.com/".insteadOf ssh://git@github.com/')
+
+def submodule_update_https(cwd: Path):
+    run_cmd("git submodule sync --recursive", cwd=cwd)
+    cmd = (
+        'git -c url."https://github.com/".insteadOf=git@github.com: '
+        '-c url."https://github.com/".insteadOf=ssh://git@github.com/ '
+        "submodule update --init --recursive"
+    )
+    run_cmd(cmd, cwd=cwd)
+
 def clone_or_pull(repo_url: str, clone_dir: str):
     # Only needed when cloning / pulling, not when building.
     # By putting the import here we allow the script to be imported inside the docker image
     from git import Repo
+
+    ensure_https_git()
+
     git_dir = os.path.join(clone_dir, ".git")
     if not os.path.exists(git_dir):
         print(f"Cloning into {clone_dir}")
         run_cmd(f"rm -rf {clone_dir}")
-        Repo.clone_from(repo_url, clone_dir, recursive=True)
+        Repo.clone_from(repo_url, clone_dir)
+        submodule_update_https(Path(clone_dir))
     else:
         print(f"Pulling latest changes in {clone_dir}")
         repo = Repo(clone_dir)
@@ -77,8 +95,7 @@ def clone_or_pull(repo_url: str, clone_dir: str):
 
         # Update submodules
         print(f"Updating submodules in {clone_dir}")
-        run_cmd("git submodule sync", cwd=Path(clone_dir))
-        run_cmd("git submodule update --init --recursive", cwd=Path(clone_dir))
+        submodule_update_https(Path(clone_dir))
 
 def build_app(clone_dir: str, flags: str):
     cmd = f"make clean"
