@@ -77,6 +77,7 @@ add_executable(fuzz_proto_full
     ../tests/unit/mock/putchar.c
     ../tests/unit/mock/staking_mock.c
     ../tests/unit/mock/token_lookup_mock.c
+    ../src/hedera_format_amount.c
 )
 target_compile_definitions(fuzz_proto_full PRIVATE NO_BOLOS_SDK=1)
 target_compile_definitions(fuzz_proto_full PRIVATE PB_SYSTEM_HEADER="nanopb_system.h")
@@ -90,3 +91,10 @@ add_executable(fuzz_evm_payload
 )
 target_compile_definitions(fuzz_evm_payload PRIVATE NO_BOLOS_SDK=1)
 target_link_libraries(fuzz_evm_payload mock_bolos)
+
+add_executable(fuzz_hedera_format_amount
+    fuzzer_hedera_format_amount.c
+    ../src/hedera_format_amount.c
+)
+target_compile_definitions(fuzz_hedera_format_amount PRIVATE NO_BOLOS_SDK=1)
+target_link_libraries(fuzz_hedera_format_amount mock_bolos)
