@@ -61,7 +61,8 @@ setup_directories() {
     # Create corpus directories for each fuzzer
     mkdir -p "$CORPUS_DIR/proto_varlen_parser"
     mkdir -p "$CORPUS_DIR/evm_payload"
-    
+    mkdir -p "$CORPUS_DIR/swap_token_utils"
+
     print_status "Directories created"
 }
 
@@ -94,6 +95,9 @@ generate_corpus() {
     # ERC20 transfer selector only
     printf "\xA9\x05\x9C\xBB" > "$CORPUS_DIR/evm_payload/selector.bin"
     # Full calldata: selector + 32-byte address word + 32-byte amount word
+    # swap_token_utils seeds
+    printf "\x01\x08\x00\x00\x00\x00\x00\x00\x00\x01\x20\x04HBAR" > "$CORPUS_DIR/swap_token_utils/hbar_valid.bin"
+    printf "\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x10" > "$CORPUS_DIR/swap_token_utils/max_valid.bin"
     (
       printf "\xA9\x05\x9C\xBB"
       # address word: 12 zero pad + 20 0x11 bytes
@@ -156,7 +160,7 @@ run_fuzzer() {
 run_all_fuzzers() {
     print_status "Starting fuzzing campaign..."
     
-    local fuzzers=("proto_varlen_parser" "evm_payload")
+    local fuzzers=("proto_varlen_parser" "evm_payload" "swap_token_utils")
     
     for fuzzer in "${fuzzers[@]}"; do
         run_fuzzer "$fuzzer" "$FUZZ_TIME"
