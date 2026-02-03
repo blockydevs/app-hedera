@@ -45,14 +45,14 @@ def test_hedera_get_public_key_ok(backend, firmware, navigator, test_name):
         with hedera.get_public_key_confirm(index):
             if firmware.device == "nanos":
                 nav_ins = [
-                    NavInsID.RIGHT_CLICK,
+                    NavInsID.BOTH_CLICK,
                     NavInsID.BOTH_CLICK,
                     NavInsID.RIGHT_CLICK,
                 ]
             elif backend.firmware.device.startswith("nano"):
                 nav_ins = [
                     NavInsID.RIGHT_CLICK,
-                    NavInsID.BOTH_CLICK,
+                    NavInsID.RIGHT_CLICK,
                     NavInsID.RIGHT_CLICK,
                     NavInsID.BOTH_CLICK,
                 ]
@@ -70,14 +70,14 @@ def test_hedera_get_public_key_refused(backend, firmware, navigator, test_name):
     with hedera.get_public_key_confirm(0):
         if firmware.device == "nanos":
             nav_ins = [
-                NavInsID.RIGHT_CLICK,
+                NavInsID.BOTH_CLICK,
                 NavInsID.BOTH_CLICK,
                 NavInsID.LEFT_CLICK,
             ]
         elif backend.firmware.device.startswith("nano"):
             nav_ins = [
                 NavInsID.RIGHT_CLICK,
-                NavInsID.BOTH_CLICK,
+                NavInsID.RIGHT_CLICK,
                 NavInsID.RIGHT_CLICK,
                 NavInsID.RIGHT_CLICK,
                 NavInsID.BOTH_CLICK,
