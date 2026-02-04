@@ -1,20 +1,21 @@
 from pathlib import Path
-from ragger.firmware import Firmware
 from ragger.navigator import NavInsID
-
+from ledgered.devices import Devices
 
 ROOT_SCREENSHOT_PATH = Path(__file__).parent.resolve()
 
 def navigation_helper_confirm(firmware, scenario_navigator):
-    if firmware.is_nano:
+    device_info = Devices.get_by_type(firmware)
+    if device_info.name.startswith("nano"):
         scenario_navigator.review_approve(custom_screen_text="Confirm")
     else:
         scenario_navigator.review_approve()
 
 def navigation_helper_reject(firmware, scenario_navigator):
-    if firmware is Firmware.NANOS:
+    device_info = Devices.get_by_type(firmware)
+    if device_info.name == "nanos":
         scenario_navigator.review_reject(custom_screen_text="Deny")
-    elif firmware.is_nano:
+    elif device_info.name.startswith("nano"):
         scenario_navigator.review_reject(custom_screen_text="Reject")
     else:
         scenario_navigator.review_reject()
@@ -23,7 +24,8 @@ def navigation_helper_reject(firmware, scenario_navigator):
 def navigate_erc20_confirm(firmware, navigator, scenario_navigator, screenshots_path: Path, test_name: str):
     print(type(firmware))
     """Standard ERC20 navigation schema: capture NBGL warning, then approve review."""
-    if firmware.is_nano:
+    device_info = Devices.get_by_type(firmware)
+    if device_info.name.startswith("nano"):
         print("navigate_erc20_confirm nano")
         navigator.navigate_and_compare(
             screenshots_path,
@@ -44,7 +46,8 @@ def navigate_erc20_confirm(firmware, navigator, scenario_navigator, screenshots_
 
 def navigate_erc20_reject(firmware, navigator, scenario_navigator, screenshots_path: Path, test_name: str):
     """Standard ERC20 navigation schema: capture NBGL warning, then reject review."""
-    if firmware.is_nano:
+    device_info = Devices.get_by_type(firmware)
+    if device_info.name.startswith("nano"):
         print("navigate_erc20_reject nano")
         navigator.navigate_and_compare(
             screenshots_path,
@@ -64,7 +67,8 @@ def navigate_erc20_reject(firmware, navigator, scenario_navigator, screenshots_p
 
 def navigate_erc20_reject_at_warning(firmware, navigator, scenario_navigator, screenshots_path: Path, test_name: str):
     """Standard ERC20 navigation schema: capture NBGL warning, then reject review."""
-    if firmware.is_nano:
+    device_info = Devices.get_by_type(firmware)
+    if device_info.name.startswith("nano"):
         print("navigate_erc20_reject_at_warning nano")
         navigator.navigate_and_compare(
             screenshots_path,
@@ -83,7 +87,8 @@ def navigate_erc20_reject_at_warning(firmware, navigator, scenario_navigator, sc
 
 def navigate_erc20_show_qr_code(firmware, navigator, scenario_navigator, screenshots_path: Path, test_name: str):
     """Standard ERC20 navigation schema: capture NBGL warning, then show QR code."""
-    if firmware.is_nano:
+    device_info = Devices.get_by_type(firmware)
+    if device_info.name.startswith("nano"):
         raise NotImplementedError("navigate_erc20_show_qr_code is not implemented for nano")
     else:
         navigator.navigate_and_compare(
