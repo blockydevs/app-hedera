@@ -59,11 +59,6 @@ def run_cmd(cmd: str,
 
     return ret.stdout.strip()
 
-def ensure_https_git():
-    # Force HTTPS for all GitHub SSH URLs (incl. submodules)
-    run_cmd('git config --global url."https://github.com/".insteadOf git@github.com:')
-    run_cmd('git config --global url."https://github.com/".insteadOf ssh://git@github.com/')
-
 def submodule_update_https(cwd: Path):
     run_cmd("git submodule sync --recursive", cwd=cwd)
     cmd = (
@@ -77,8 +72,6 @@ def clone_or_pull(repo_url: str, clone_dir: str):
     # Only needed when cloning / pulling, not when building.
     # By putting the import here we allow the script to be imported inside the docker image
     from git import Repo
-
-    ensure_https_git()
 
     git_dir = os.path.join(clone_dir, ".git")
     if not os.path.exists(git_dir):
