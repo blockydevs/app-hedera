@@ -12,10 +12,19 @@
 #else
     #define checkreturn __attribute__((warn_unused_result))
 #endif
-
+#include <os.h>
 #include "pb.h"
 #include "pb_decode.h"
 #include "pb_common.h"
+
+/* Debug logging support - only if PRINTF is available */
+#ifdef PRINTF
+/* Forward declaration for mcu_usb_printf - function is provided by Ledger SDK */
+/* This declaration is needed when PRINTF is defined as mcu_usb_printf */
+#define PB_DEBUG_PRINTF PRINTF
+#else
+#define PB_DEBUG_PRINTF(...) ((void)0)
+#endif
 
 /**************************************
  * Declarations internal to this file *
@@ -57,8 +66,6 @@ static void pb_release_single_field(pb_field_iter_t *field);
 #define pb_uint64_t uint64_t
 #endif
 
-#define PB_WT_PACKED ((pb_wire_type_t)0xFF)
-
 typedef struct {
     uint32_t bitfield[(PB_MAX_REQUIRED_FIELDS + 31) / 32];
 } pb_fields_seen_t;
@@ -71,12 +78,17 @@ static bool checkreturn buf_read(pb_istream_t *stream, pb_byte_t *buf, size_t co
 {
     size_t i;
     const pb_byte_t *source = (const pb_byte_t*)stream->state;
+    
+    PB_DEBUG_PRINTF("buf_read: count=%u, bytes_left=%u, source=%p, buf=%p\n", 
+                    (unsigned)count, stream->bytes_left, source, buf);
+    
     stream->state = (pb_byte_t*)stream->state + count;
     
     if (buf != NULL)
     {
         for (i = 0; i < count; i++)
             buf[i] = source[i];
+        PB_DEBUG_PRINTF("buf_read: copied %u bytes\n", (unsigned)count);
     }
     
     return true;
@@ -213,18 +225,22 @@ static bool checkreturn pb_decode_varint32_eof(pb_istream_t *stream, uint32_t *d
                     PB_RETURN_ERROR(stream, "varint overflow");
                 }
             }
+            else if (bitpos == 28)
+            {
+                PB_DEBUG_PRINTF("pb_decode_varint32: bitpos=28, byte=0x%02x\n", byte);
+                if ((byte & 0x70) != 0 && (byte & 0x78) != 0x78)
+                {
+                    PB_DEBUG_PRINTF("pb_decode_varint32: varint overflow detected\n");
+                    PB_RETURN_ERROR(stream, "varint overflow");
+                }
+                result |= (uint32_t)(byte & 0x0F) << bitpos;
+            }
             else
             {
                 result |= (uint32_t)(byte & 0x7F) << bitpos;
             }
             bitpos = (uint_fast8_t)(bitpos + 7);
         } while (byte & 0x80);
-        
-        if (bitpos == 35 && (byte & 0x70) != 0)
-        {
-            /* The last byte was at bitpos=28, so only bottom 4 bits fit. */
-            PB_RETURN_ERROR(stream, "varint overflow");
-        }
    }
    
    *dest = result;
@@ -245,11 +261,11 @@ bool checkreturn pb_decode_varint(pb_istream_t *stream, uint64_t *dest)
     
     do
     {
-        if (bitpos >= 64)
-            PB_RETURN_ERROR(stream, "varint overflow");
-        
         if (!pb_readbyte(stream, &byte))
             return false;
+
+        if (bitpos >= 63 && (byte & 0xFE) != 0)
+            PB_RETURN_ERROR(stream, "varint overflow");
 
         result |= (uint64_t)(byte & 0x7F) << bitpos;
         bitpos = (uint_fast8_t)(bitpos + 7);
@@ -517,9 +533,12 @@ static bool checkreturn decode_static_field(pb_istream_t *stream, pb_wire_type_t
             }
 
         case PB_HTYPE_ONEOF:
+            PB_DEBUG_PRINTF("decode_static_field: ONEOF, tag=%u, LTYPE=%u\n", 
+                            field->tag, PB_LTYPE(field->type));
             if (PB_LTYPE_IS_SUBMSG(field->type) &&
                 *(pb_size_t*)field->pSize != field->tag)
             {
+                PB_DEBUG_PRINTF("decode_static_field: ONEOF submsg, clearing data\n");
                 /* We memset to zero so that any callbacks are set to NULL.
                  * This is because the callbacks might otherwise have values
                  * from some other union field.
@@ -532,7 +551,7 @@ static bool checkreturn decode_static_field(pb_istream_t *stream, pb_wire_type_t
                 /* Set default values for the submessage fields. */
                 if (field->submsg_desc->default_value != NULL ||
                     field->submsg_desc->field_callback != NULL ||
-                    ((const pb_msgdesc_t * const *)PIC(field->submsg_desc->submsg_info))[0] != NULL)
+                    field->submsg_desc->submsg_info[0] != NULL)
                 {
                     pb_field_iter_t submsg_iter;
                     if (pb_field_iter_begin(&submsg_iter, field->submsg_desc, field->pData))
@@ -703,6 +722,12 @@ static bool checkreturn decode_pointer_field(pb_istream_t *stream, pb_wire_type_
 
                     /* Decode the array entry */
                     field->pData = *(char**)field->pField + field->data_size * (*size);
+                    if (field->pData == NULL)
+                    {
+                        /* Shouldn't happen, but satisfies static analyzers */
+                        status = false;
+                        break;
+                    }
                     initialize_pointer_field(field->pData, field);
                     if (!decode_basic_field(&substream, PB_WT_PACKED, field))
                     {
@@ -756,8 +781,11 @@ static bool checkreturn decode_callback_field(pb_istream_t *stream, pb_wire_type
         do
         {
             prev_bytes_left = substream.bytes_left;
-            if (!((bool (*)(pb_istream_t *istream, pb_ostream_t *ostream, const pb_field_iter_t *field))(PIC(field->descriptor->field_callback)))(&substream, NULL, field))
-                PB_RETURN_ERROR(stream, "callback failed");
+            if (!field->descriptor->field_callback(&substream, NULL, field))
+            {
+                PB_SET_ERROR(stream, substream.errmsg ? substream.errmsg : "callback failed");
+                return false;
+            }
         } while (substream.bytes_left > 0 && substream.bytes_left < prev_bytes_left);
         
         if (!pb_close_string_substream(stream, &substream))
@@ -785,11 +813,14 @@ static bool checkreturn decode_callback_field(pb_istream_t *stream, pb_wire_type
 
 static bool checkreturn decode_field(pb_istream_t *stream, pb_wire_type_t wire_type, pb_field_iter_t *field)
 {
+    PB_DEBUG_PRINTF("decode_field: tag=%u, wire_type=%u, HTYPE=%u, LTYPE=%u\n", 
+                    field->tag, wire_type, PB_HTYPE(field->type), PB_LTYPE(field->type));
 #ifdef PB_ENABLE_MALLOC
     /* When decoding an oneof field, check if there is old data that must be
      * released first. */
     if (PB_HTYPE(field->type) == PB_HTYPE_ONEOF)
     {
+        PB_DEBUG_PRINTF("decode_field: ONEOF field, tag=%u\n", field->tag);
         if (!pb_release_union_field(stream, field))
             return false;
     }
@@ -854,13 +885,21 @@ static bool checkreturn decode_extension(pb_istream_t *stream,
 }
 
 /* Initialize message fields to default values, recursively */
+// W pliku app-hedera/vendor/nanopb/pb_decode.c, w funkcji pb_field_set_to_default (około linii 888):
+
 static bool pb_field_set_to_default(pb_field_iter_t *field)
 {
     pb_type_t type;
     type = field->type;
 
+    PB_DEBUG_PRINTF("pb_field_set_to_default: start, tag=%u, type=0x%02x\n", 
+                    field->tag, type);
+    PB_DEBUG_PRINTF("pb_field_set_to_default: pField=%p, pSize=%p, pData=%p\n",
+                    field->pField, field->pSize, field->pData);
+
     if (PB_LTYPE(type) == PB_LTYPE_EXTENSION)
     {
+        PB_DEBUG_PRINTF("pb_field_set_to_default: EXTENSION type\n");
         pb_extension_t *ext = *(pb_extension_t* const *)field->pData;
         while (ext != NULL)
         {
@@ -876,9 +915,11 @@ static bool pb_field_set_to_default(pb_field_iter_t *field)
     }
     else if (PB_ATYPE(type) == PB_ATYPE_STATIC)
     {
+        PB_DEBUG_PRINTF("pb_field_set_to_default: STATIC type\n");
         bool init_data = true;
         if (PB_HTYPE(type) == PB_HTYPE_OPTIONAL && field->pSize != NULL)
         {
+            PB_DEBUG_PRINTF("pb_field_set_to_default: OPTIONAL, setting has_field=false\n");
             /* Set has_field to false. Still initialize the optional field
              * itself also. */
             *(bool*)field->pSize = false;
@@ -886,6 +927,7 @@ static bool pb_field_set_to_default(pb_field_iter_t *field)
         else if (PB_HTYPE(type) == PB_HTYPE_REPEATED ||
                  PB_HTYPE(type) == PB_HTYPE_ONEOF)
         {
+            PB_DEBUG_PRINTF("pb_field_set_to_default: REPEATED/ONEOF, setting count/which=0\n");
             /* REPEATED: Set array count to 0, no need to initialize contents.
                ONEOF: Set which_field to 0. */
             *(pb_size_t*)field->pSize = 0;
@@ -899,6 +941,7 @@ static bool pb_field_set_to_default(pb_field_iter_t *field)
                  field->submsg_desc->field_callback != NULL ||
                  ((const pb_msgdesc_t * const *)PIC(field->submsg_desc->submsg_info))[0] != NULL))
             {
+                PB_DEBUG_PRINTF("pb_field_set_to_default: SUBMSG with defaults\n");
                 /* Initialize submessage to defaults.
                  * Only needed if it has default values
                  * or callback/submessage fields. */
@@ -911,6 +954,7 @@ static bool pb_field_set_to_default(pb_field_iter_t *field)
             }
             else
             {
+                PB_DEBUG_PRINTF("pb_field_set_to_default: memset to zero, data_size=%u\n", field->data_size);
                 /* Initialize to zeros */
                 memset(field->pData, 0, (size_t)field->data_size);
             }
@@ -918,6 +962,7 @@ static bool pb_field_set_to_default(pb_field_iter_t *field)
     }
     else if (PB_ATYPE(type) == PB_ATYPE_POINTER)
     {
+        PB_DEBUG_PRINTF("pb_field_set_to_default: POINTER type\n");
         /* Initialize the pointer to NULL. */
         *(void**)field->pField = NULL;
 
@@ -930,9 +975,11 @@ static bool pb_field_set_to_default(pb_field_iter_t *field)
     }
     else if (PB_ATYPE(type) == PB_ATYPE_CALLBACK)
     {
+        PB_DEBUG_PRINTF("pb_field_set_to_default: CALLBACK type\n");
         /* Don't overwrite callback */
     }
 
+    PB_DEBUG_PRINTF("pb_field_set_to_default: done\n");
     return true;
 }
 
@@ -943,21 +990,40 @@ static bool pb_message_set_to_defaults(pb_field_iter_t *iter)
     pb_wire_type_t wire_type = PB_WT_VARINT;
     bool eof;
 
+    PB_DEBUG_PRINTF("pb_message_set_to_defaults: start, descriptor=%p, message=%p\n", 
+                    iter->descriptor, iter->message);
+    PB_DEBUG_PRINTF("pb_message_set_to_defaults: field_count=%u, index=%u\n",
+                    iter->descriptor ? iter->descriptor->field_count : 0, iter->index);
+
     if (iter->descriptor->default_value)
     {
+        PB_DEBUG_PRINTF("pb_message_set_to_defaults: has default_value\n");
         defstream = pb_istream_from_buffer(iter->descriptor->default_value, (size_t)-1);
         if (!pb_decode_tag(&defstream, &wire_type, &tag, &eof))
             return false;
     }
+    else
+    {
+        PB_DEBUG_PRINTF("pb_message_set_to_defaults: no default_value\n");
+    }
 
     do
     {
+        PB_DEBUG_PRINTF("pb_message_set_to_defaults: iterating, tag=%u, index=%u\n", 
+                        iter->tag, iter->index);
+        PB_DEBUG_PRINTF("pb_message_set_to_defaults: pField=%p, pSize=%p, pData=%p\n",
+                        iter->pField, iter->pSize, iter->pData);
+        
         if (!pb_field_set_to_default(iter))
+        {
+            PB_DEBUG_PRINTF("pb_message_set_to_defaults: pb_field_set_to_default failed\n");
             return false;
+        }
 
         if (tag != 0 && iter->tag == tag)
         {
             /* We have a default value for this field in the defstream */
+            PB_DEBUG_PRINTF("pb_message_set_to_defaults: applying default value for tag %u\n", tag);
             if (!decode_field(&defstream, wire_type, iter))
                 return false;
             if (!pb_decode_tag(&defstream, &wire_type, &tag, &eof))
@@ -968,6 +1034,7 @@ static bool pb_message_set_to_defaults(pb_field_iter_t *iter)
         }
     } while (pb_field_iter_next(iter));
 
+    PB_DEBUG_PRINTF("pb_message_set_to_defaults: done\n");
     return true;
 }
 
@@ -992,13 +1059,22 @@ static bool checkreturn pb_decode_inner(pb_istream_t *stream, const pb_msgdesc_t
     const uint32_t allbits = ~(uint32_t)0;
     pb_field_iter_t iter;
 
+    PB_DEBUG_PRINTF("pb_decode_inner: start, bytes_left=%u, field_count=%u\n", 
+                    stream->bytes_left, fields->field_count);
+
     if (pb_field_iter_begin(&iter, fields, dest_struct))
     {
+        PB_DEBUG_PRINTF("pb_decode_inner: pb_field_iter_begin succeeded\n");
         if ((flags & PB_DECODE_NOINIT) == 0)
         {
+            PB_DEBUG_PRINTF("pb_decode_inner: setting defaults\n");
             if (!pb_message_set_to_defaults(&iter))
                 PB_RETURN_ERROR(stream, "failed to set defaults");
         }
+    }
+    else
+    {
+        PB_DEBUG_PRINTF("pb_decode_inner: pb_field_iter_begin failed\n");
     }
 
     while (stream->bytes_left)
@@ -1015,6 +1091,9 @@ static bool checkreturn pb_decode_inner(pb_istream_t *stream, const pb_msgdesc_t
                 return false;
         }
 
+        PB_DEBUG_PRINTF("pb_decode_inner: tag=%u, wire_type=%u, bytes_left=%u\n", 
+                        tag, wire_type, stream->bytes_left);
+
         if (tag == 0)
         {
           if (flags & PB_DECODE_NULLTERMINATED)
@@ -1029,6 +1108,7 @@ static bool checkreturn pb_decode_inner(pb_istream_t *stream, const pb_msgdesc_t
 
         if (!pb_field_iter_find(&iter, tag) || PB_LTYPE(iter.type) == PB_LTYPE_EXTENSION)
         {
+            PB_DEBUG_PRINTF("pb_decode_inner: tag %u not found or extension\n", tag);
             /* No match found, check if it matches an extension. */
             if (extension_range_start == 0)
             {
@@ -1095,9 +1175,16 @@ static bool checkreturn pb_decode_inner(pb_istream_t *stream, const pb_msgdesc_t
             fields_seen.bitfield[iter.required_field_index >> 5] |= tmp;
         }
 
+        PB_DEBUG_PRINTF("pb_decode_inner: decoding field, tag=%u, HTYPE=%u, LTYPE=%u\n", 
+                        iter.tag, PB_HTYPE(iter.type), PB_LTYPE(iter.type));
         if (!decode_field(stream, wire_type, &iter))
+        {
+            PB_DEBUG_PRINTF("pb_decode_inner: decode_field failed for tag=%u\n", iter.tag);
             return false;
+        }
     }
+    
+    PB_DEBUG_PRINTF("pb_decode_inner: completed successfully\n");
 
     /* Check that all elements of the last decoded fixed count field were present. */
     if (fixed_count_field != PB_SIZE_MAX &&
@@ -1358,7 +1445,7 @@ bool pb_decode_fixed32(pb_istream_t *stream, void *dest)
     if (!pb_read(stream, u.bytes, 4))
         return false;
 
-#if defined(__BYTE_ORDER) && __BYTE_ORDER == __LITTLE_ENDIAN && CHAR_BIT == 8
+#if defined(PB_LITTLE_ENDIAN_8BIT) && PB_LITTLE_ENDIAN_8BIT == 1
     /* fast path - if we know that we're on little endian, assign directly */
     *(uint32_t*)dest = u.fixed32;
 #else
@@ -1381,7 +1468,7 @@ bool pb_decode_fixed64(pb_istream_t *stream, void *dest)
     if (!pb_read(stream, u.bytes, 8))
         return false;
 
-#if defined(__BYTE_ORDER) && __BYTE_ORDER == __LITTLE_ENDIAN && CHAR_BIT == 8
+#if defined(PB_LITTLE_ENDIAN_8BIT) && PB_LITTLE_ENDIAN_8BIT == 1
     /* fast path - if we know that we're on little endian, assign directly */
     *(uint64_t*)dest = u.fixed64;
 #else

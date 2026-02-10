@@ -18,8 +18,10 @@ includes nanopb headers.
 * `PB_SYSTEM_HEADER`: Replace the standards header files with a single system-specific header file. Value must include quotes, for example `#define PB_SYSTEM_HEADER "foo.h"`. See [extra/pb_syshdr.h](https://github.com/nanopb/nanopb/blob/master/extra/pb_syshdr.h) for an example.
 * `PB_WITHOUT_64BIT`: Disable support of 64-bit integer fields, for old compilers or for a slight speedup on 8-bit platforms.
 * `PB_ENCODE_ARRAYS_UNPACKED`: Encode scalar arrays in the unpacked format, which takes up more space. Only to be used when the decoder on the receiving side cannot process packed arrays, such as [protobuf.js versions before 2020](https://github.com/protocolbuffers/protobuf/issues/1701).
-* `PB_CONVERT_DOBULE_FLOAT`: Convert doubles to floats for platforms that do not support 64-bit `double` datatype. Mainly `AVR` processors.
+* `PB_CONVERT_DOUBLE_FLOAT`: Convert doubles to floats for platforms that do not support 64-bit `double` datatype. Mainly `AVR` processors.
 * `PB_VALIDATE_UTF8`: Check whether incoming strings are valid UTF-8 sequences. Adds a small performance and code size penalty.
+* `PB_C99_STATIC_ASSERT`: Use C99 style negative array trick for static assertions. For compilers that do not support C11 standard.
+* `PB_NO_STATIC_ASSERT`: Disable static assertions at compile time. Only for compilers with limited support of C standards.
 
 The `PB_MAX_REQUIRED_FIELDS` and `PB_FIELD_32BIT` settings allow
 raising some datatype limits to suit larger messages. Their need is

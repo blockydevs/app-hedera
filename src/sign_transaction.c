@@ -426,7 +426,12 @@ void handle_sign_transaction(uint8_t p1, uint8_t p2, uint8_t* buffer,
     pb_istream_t stream =
         pb_istream_from_buffer(raw_transaction, raw_transaction_length);
 
+    PRINTF("%s: Before pb_decode, len=%u\n", __func__, raw_transaction_length);
+    PRINTF("%s: Stream bytes_left=%u\n", __func__, stream.bytes_left);
+    PRINTF("%s: Stream state=%p\n", __func__, stream.state);
+    
     // Decode the Transaction
+    PRINTF("%s: Calling pb_decode...\n", __func__);
     if (!pb_decode(&stream, Hedera_TransactionBody_fields,
                    &st_ctx.transaction)) {
         // Oh no couldn't ...
@@ -435,6 +440,8 @@ void handle_sign_transaction(uint8_t p1, uint8_t p2, uint8_t* buffer,
         MEMCLEAR(raw_transaction);
         THROW(EXCEPTION_MALFORMED_APDU);
     }
+    
+    PRINTF("%s: pb_decode succeeded, which_data=%u\n", __func__, st_ctx.transaction.which_data);
 
     // Extract account memo from cryptoUpdateAccount using second-stage protobuf
     // decoding This handles the nested StringValue structure that nanopb

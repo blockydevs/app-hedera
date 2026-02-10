@@ -4,6 +4,15 @@
  */
 
 #include "pb_common.h"
+#include <os.h>
+/* Debug logging support - only if PRINTF is available */
+#ifdef PRINTF
+/* Forward declaration for mcu_usb_printf - function is provided by Ledger SDK */
+/* This declaration is needed when PRINTF is defined as mcu_usb_printf */
+#define PB_DEBUG_PRINTF PRINTF
+#else
+#define PB_DEBUG_PRINTF(...) ((void)0)
+#endif
 
 static bool load_descriptor_values(pb_field_iter_t *iter)
 {
@@ -11,74 +20,98 @@ static bool load_descriptor_values(pb_field_iter_t *iter)
     uint32_t data_offset;
     int_least8_t size_offset;
 
+    PB_DEBUG_PRINTF("load_descriptor_values: index=%u, field_count=%u\n", 
+                    iter->index, iter->descriptor->field_count);
+
     if (iter->index >= iter->descriptor->field_count)
         return false;
 
     word0 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index]);
     iter->type = (pb_type_t)((word0 >> 8) & 0xFF);
+    
+    // W pliku app-hedera/vendor/nanopb/pb_common.c, w funkcji load_descriptor_values:
+
+    PB_DEBUG_PRINTF("load_descriptor_values: type=0x%02x\n", iter->type);
+    
+    PB_DEBUG_PRINTF("load_descriptor_values: word0 & 3 = %u (format type)\n", word0 & 3);
 
     switch(word0 & 3)
     {
         case 0: {
+            PB_DEBUG_PRINTF("load_descriptor_values: case 0 (1-word format)\n");
             /* 1-word format */
             iter->array_size = 1;
             iter->tag = (pb_size_t)((word0 >> 2) & 0x3F);
             size_offset = (int_least8_t)((word0 >> 24) & 0x0F);
             data_offset = (word0 >> 16) & 0xFF;
             iter->data_size = (pb_size_t)((word0 >> 28) & 0x0F);
+            PB_DEBUG_PRINTF("load_descriptor_values: case 0 done, tag=%u, data_offset=%u\n", iter->tag, data_offset);
             break;
         }
 
         case 1: {
+            PB_DEBUG_PRINTF("load_descriptor_values: case 1 (2-word format)\n");
             /* 2-word format */
             uint32_t word1 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 1]);
+            PB_DEBUG_PRINTF("load_descriptor_values: word1=0x%08x\n", word1);
 
             iter->array_size = (pb_size_t)((word0 >> 16) & 0x0FFF);
             iter->tag = (pb_size_t)(((word0 >> 2) & 0x3F) | ((word1 >> 28) << 6));
             size_offset = (int_least8_t)((word0 >> 28) & 0x0F);
             data_offset = word1 & 0xFFFF;
             iter->data_size = (pb_size_t)((word1 >> 16) & 0x0FFF);
+            PB_DEBUG_PRINTF("load_descriptor_values: case 1 done\n");
             break;
         }
 
         case 2: {
+            PB_DEBUG_PRINTF("load_descriptor_values: case 2 (4-word format)\n");
             /* 4-word format */
             uint32_t word1 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 1]);
             uint32_t word2 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 2]);
             uint32_t word3 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 3]);
+            PB_DEBUG_PRINTF("load_descriptor_values: word1=0x%08x, word2=0x%08x, word3=0x%08x\n", word1, word2, word3);
 
             iter->array_size = (pb_size_t)(word0 >> 16);
             iter->tag = (pb_size_t)(((word0 >> 2) & 0x3F) | ((word1 >> 8) << 6));
             size_offset = (int_least8_t)(word1 & 0xFF);
             data_offset = word2;
             iter->data_size = (pb_size_t)word3;
+            PB_DEBUG_PRINTF("load_descriptor_values: case 2 done\n");
             break;
         }
 
         default: {
+            PB_DEBUG_PRINTF("load_descriptor_values: default case (8-word format)\n");
             /* 8-word format */
             uint32_t word1 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 1]);
             uint32_t word2 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 2]);
             uint32_t word3 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 3]);
-            uint32_t word4 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 4]);            
+            uint32_t word4 = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index + 4]);
+            PB_DEBUG_PRINTF("load_descriptor_values: word1=0x%08x, word2=0x%08x, word3=0x%08x, word4=0x%08x\n", word1, word2, word3, word4);
 
             iter->array_size = (pb_size_t)word4;
             iter->tag = (pb_size_t)(((word0 >> 2) & 0x3F) | ((word1 >> 8) << 6));
             size_offset = (int_least8_t)(word1 & 0xFF);
             data_offset = word2;
             iter->data_size = (pb_size_t)word3;
+            PB_DEBUG_PRINTF("load_descriptor_values: default case done\n");
             break;
         }
     }
+    
+    PB_DEBUG_PRINTF("load_descriptor_values: after switch, message=%p\n", iter->message);
 
     if (!iter->message)
     {
+        PB_DEBUG_PRINTF("load_descriptor_values: message is NULL\n");
         /* Avoid doing arithmetic on null pointers, it is undefined */
         iter->pField = NULL;
         iter->pSize = NULL;
     }
     else
     {
+        PB_DEBUG_PRINTF("load_descriptor_values: setting pField, data_offset=%u\n", data_offset);
         iter->pField = (char*)iter->message + data_offset;
 
         if (size_offset)
@@ -115,16 +148,23 @@ static bool load_descriptor_values(pb_field_iter_t *iter)
     {
         iter->submsg_desc = NULL;
     }
-
+    
+    PB_DEBUG_PRINTF("load_descriptor_values: returning true\n");
     return true;
 }
 
+// W pliku app-hedera/vendor/nanopb/pb_common.c, w funkcji advance_iterator (około linii 156):
+
 static void advance_iterator(pb_field_iter_t *iter)
 {
+    PB_DEBUG_PRINTF("advance_iterator: start, index=%u, field_count=%u\n",
+                    iter->index, iter->descriptor ? iter->descriptor->field_count : 0);
+    
     iter->index++;
 
     if (iter->index >= iter->descriptor->field_count)
     {
+        PB_DEBUG_PRINTF("advance_iterator: restarting\n");
         /* Restart */
         iter->index = 0;
         iter->field_info_index = 0;
@@ -133,6 +173,7 @@ static void advance_iterator(pb_field_iter_t *iter)
     }
     else
     {
+        PB_DEBUG_PRINTF("advance_iterator: incrementing, field_info_index=%u\n", iter->field_info_index);
         /* Increment indexes based on previous field type.
          * All field info formats have the following fields:
          * - lowest 2 bits tell the amount of words in the descriptor (2^n words)
@@ -143,6 +184,9 @@ static void advance_iterator(pb_field_iter_t *iter)
         pb_type_t prev_type = (prev_descriptor >> 8) & 0xFF;
         pb_size_t descriptor_len = (pb_size_t)(1 << (prev_descriptor & 3));
 
+        PB_DEBUG_PRINTF("advance_iterator: prev_descriptor=0x%08x, prev_type=0x%02x, descriptor_len=%u\n",
+                        prev_descriptor, prev_type, descriptor_len);
+
         /* Add to fields.
          * The cast to pb_size_t is needed to avoid -Wconversion warning.
          * Because the data is is constants from generator, there is no danger of overflow.
@@ -150,16 +194,31 @@ static void advance_iterator(pb_field_iter_t *iter)
         iter->field_info_index = (pb_size_t)(iter->field_info_index + descriptor_len);
         iter->required_field_index = (pb_size_t)(iter->required_field_index + (PB_HTYPE(prev_type) == PB_HTYPE_REQUIRED));
         iter->submessage_index = (pb_size_t)(iter->submessage_index + PB_LTYPE_IS_SUBMSG(prev_type));
+        
+        PB_DEBUG_PRINTF("advance_iterator: new field_info_index=%u, submessage_index=%u\n",
+                        iter->field_info_index, iter->submessage_index);
     }
 }
 
 bool pb_field_iter_begin(pb_field_iter_t *iter, const pb_msgdesc_t *desc, void *message)
 {
+    PB_DEBUG_PRINTF("pb_field_iter_begin: desc=%p, message=%p\n", desc, message);
+    
+    if (desc == NULL || desc->field_count == 0)
+    {
+        PB_DEBUG_PRINTF("pb_field_iter_begin: empty descriptor\n");
+        return false;
+    }
+    
+    PB_DEBUG_PRINTF("pb_field_iter_begin: field_count=%u, field_info=%p\n", 
+                    desc->field_count, desc->field_info);
+
     memset(iter, 0, sizeof(*iter));
 
     iter->descriptor = PIC(desc);
     iter->message = message;
 
+    PB_DEBUG_PRINTF("pb_field_iter_begin: calling load_descriptor_values\n");
     return load_descriptor_values(iter);
 }
 
@@ -192,14 +251,26 @@ bool pb_field_iter_next(pb_field_iter_t *iter)
     return iter->index != 0;
 }
 
+// W pliku app-hedera/vendor/nanopb/pb_common.c, w funkcji pb_field_iter_find (około linii 254):
+
 bool pb_field_iter_find(pb_field_iter_t *iter, uint32_t tag)
 {
+    PB_DEBUG_PRINTF("pb_field_iter_find: start, tag=%u, iter->tag=%u\n", tag, iter->tag);
+    PB_DEBUG_PRINTF("pb_field_iter_find: descriptor=%p, field_info=%p\n",
+                    iter->descriptor, iter->descriptor ? iter->descriptor->field_info : NULL);
+    PB_DEBUG_PRINTF("pb_field_iter_find: index=%u, field_info_index=%u, field_count=%u\n",
+                    iter->index, iter->field_info_index,
+                    iter->descriptor ? iter->descriptor->field_count : 0);
+    
     if (iter->tag == tag)
     {
+        PB_DEBUG_PRINTF("pb_field_iter_find: tag matches, returning true\n");
         return true; /* Nothing to do, correct field already. */
     }
     else if (tag > iter->descriptor->largest_tag)
     {
+        PB_DEBUG_PRINTF("pb_field_iter_find: tag %u > largest_tag %u, returning false\n",
+                        tag, iter->descriptor->largest_tag);
         return false;
     }
     else
@@ -207,8 +278,11 @@ bool pb_field_iter_find(pb_field_iter_t *iter, uint32_t tag)
         pb_size_t start = iter->index;
         uint32_t fieldinfo;
 
+        PB_DEBUG_PRINTF("pb_field_iter_find: searching, start=%u\n", start);
+
         if (tag < iter->tag)
         {
+            PB_DEBUG_PRINTF("pb_field_iter_find: tag < iter->tag, resetting index\n");
             /* Fields are in tag number order, so we know that tag is between
              * 0 and our start position. Setting index to end forces
              * advance_iterator() call below to restart from beginning. */
@@ -217,26 +291,35 @@ bool pb_field_iter_find(pb_field_iter_t *iter, uint32_t tag)
 
         do
         {
+            PB_DEBUG_PRINTF("pb_field_iter_find: loop, index=%u, field_info_index=%u\n",
+                            iter->index, iter->field_info_index);
+            
             /* Advance iterator but don't load values yet */
             advance_iterator(iter);
 
+            PB_DEBUG_PRINTF("pb_field_iter_find: after advance, field_info_index=%u\n",
+                            iter->field_info_index);
+            
             /* Do fast check for tag number match */
             fieldinfo = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index]);
 
             if (((fieldinfo >> 2) & 0x3F) == (tag & 0x3F))
             {
+                PB_DEBUG_PRINTF("pb_field_iter_find: candidate match, loading values\n");
                 /* Good candidate, check further */
                 (void)load_descriptor_values(iter);
 
                 if (iter->tag == tag &&
                     PB_LTYPE(iter->type) != PB_LTYPE_EXTENSION)
                 {
+                    PB_DEBUG_PRINTF("pb_field_iter_find: found match, returning true\n");
                     /* Found it */
                     return true;
                 }
             }
         } while (iter->index != start);
 
+        PB_DEBUG_PRINTF("pb_field_iter_find: not found, restoring values\n");
         /* Searched all the way back to start, and found nothing. */
         (void)load_descriptor_values(iter);
         return false;
@@ -260,7 +343,8 @@ bool pb_field_iter_find_extension(pb_field_iter_t *iter)
             advance_iterator(iter);
 
             /* Do fast check for field type */
-            fieldinfo = PB_PROGMEM_READU32(((uint32_t *)PIC(((pb_msgdesc_t *)PIC(iter->descriptor))->field_info))[iter->field_info_index]);
+            fieldinfo = PB_PROGMEM_READU32(iter->descriptor->field_info[iter->field_info_index]);
+
             if (PB_LTYPE((fieldinfo >> 8) & 0xFF) == PB_LTYPE_EXTENSION)
             {
                 return load_descriptor_values(iter);

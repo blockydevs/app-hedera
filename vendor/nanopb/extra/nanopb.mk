@@ -31,15 +31,10 @@ else
 	endif
 endif
 
-########################################
-#      Protobuf files regeneration     #
-########################################
-.PHONY: proto
-proto:
-	@echo "Generating protobuf files..."
-	@for proto_file in $(PB_FILES) ; do \
-		echo "Processing $$proto_file..." ; \
-		$(PROTOC) $(PROTOC_OPTS) --nanopb_out=. $$proto_file ; \
-		$(PROTOC) $(PROTOC_OPTS) --python_out=. $$proto_file ; \
-	done
-	@echo "Protobuf generation complete."
+# Rule for building .pb.c and .pb.h
+%.pb.c %.pb.h: %.proto %.options
+	$(PROTOC) $(PROTOC_OPTS) --nanopb_out=. $<
+
+%.pb.c %.pb.h: %.proto
+	$(PROTOC) $(PROTOC_OPTS) --nanopb_out=. $<
+

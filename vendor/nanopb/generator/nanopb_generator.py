@@ -4,7 +4,7 @@
 from __future__ import unicode_literals
 
 '''Generate header file for nanopb from a ProtoBuf FileDescriptorSet.'''
-nanopb_version = "nanopb-0.4.5"
+nanopb_version = "nanopb-0.4.6"
 
 import sys
 import re
@@ -18,7 +18,7 @@ from functools import reduce
 
 try:
     # Add some dummy imports to keep packaging tools happy.
-    import google, distutils.util # bbfreeze seems to need these
+    import google # bbfreeze seems to need these
     import pkg_resources # pyinstaller / protobuf 2.5 seem to need these
     import proto.nanopb_pb2 as nanopb_pb2 # pyinstaller seems to need this
     import pkg_resources.py2_warn
@@ -150,13 +150,19 @@ class Globals:
     matched_namemasks = set()
     protoc_insertion_points = False
 
-# String types (for python 2 / python 3 compatibility)
-try:
+# String types and file encoding for Python2 UTF-8 support
+if sys.version_info.major == 2:
+    import codecs
+    open = codecs.open
     strtypes = (unicode, str)
-    openmode_unicode = 'rU'
-except NameError:
+
+    def str(x):
+        try:
+            return strtypes[1](x)
+        except UnicodeEncodeError:
+            return strtypes[0](x)
+else:
     strtypes = (str, )
-    openmode_unicode = 'r'
 
 
 class Names:
@@ -272,56 +278,42 @@ class EncodedSize:
         else:
             return 2**32 - 1
 
-
-'''
-Constants regarding path of proto elements in file descriptor.
-They are used to connect proto elements with source code information (comments)
-These values come from:
-    https://github.com/google/protobuf/blob/master/src/google/protobuf/descriptor.proto
-'''
-MESSAGE_PATH = 4
-ENUM_PATH = 5
-FIELD_PATH = 2
-
-
 class ProtoElement(object):
-    def __init__(self, path, index, comments):
+    # Constants regarding path of proto elements in file descriptor.
+    # They are used to connect proto elements with source code information (comments)
+    # These values come from:
+    # https://github.com/google/protobuf/blob/master/src/google/protobuf/descriptor.proto
+    FIELD = 2
+    MESSAGE = 4
+    ENUM = 5
+
+    def __init__(self, element_type, index, comments = None, parent = ()):
         '''
-        path is a predefined value for each element type in proto file.
+        element_type is a predefined value for each element type in proto file.
             For example, message == 4, enum == 5, service == 6
-        index is the N-th occurance of the `path` in the proto file.
+        index is the N-th occurrence of the `path` in the proto file.
             For example, 4-th message in the proto file or 2-nd enum etc ...
         comments is a dictionary mapping between element path & SourceCodeInfo.Location
             (contains information about source comments).
         '''
-        self.path = path
-        self.index = index
-        self.comments = comments
+        self.element_path = parent + (element_type, index)
+        self.comments = comments or {}
 
-    def element_path(self):
-        '''Get path to proto element.'''
-        return [self.path, self.index]
+    def get_member_comments(self, index):
+        '''Get comments for a member of enum or message.'''
+        return self.get_comments((ProtoElement.FIELD, index), leading_indent = True)
 
-    def member_path(self, member_index):
-        '''Get path to member of proto element.
-        Example paths:
-        [4, m] - message comments, m: msgIdx in proto from 0
-        [4, m, 2, f] - field comments in message, f: fieldIdx in message from 0
-        [6, s] - service comments, s: svcIdx in proto from 0
-        [6, s, 2, r] - rpc comments in service, r: rpc method def in service from 0
-        '''
-        return self.element_path() + [FIELD_PATH, member_index]
+    def get_comments(self, member_path = (), leading_indent = False):
+        '''Get leading & trailing comments for a protobuf element.
 
-    def get_comments(self, path, leading_indent=True):
-        '''Get leading & trailing comments for enum member based on path.
-
-        path is the proto path of an element or member (ex. [5 0] or [4 1 2 0])
+        member_path is the proto path of an element or member (ex. [5 0] or [4 1 2 0])
         leading_indent is a flag that indicates if leading comments should be indented
         '''
 
         # Obtain SourceCodeInfo.Location object containing comment
         # information (based on the member path)
-        comment = self.comments.get(str(path))
+        path = self.element_path + member_path
+        comment = self.comments.get(path)
 
         leading_comment = ""
         trailing_comment = ""
@@ -347,7 +339,7 @@ class Enum(ProtoElement):
         comments is a dictionary mapping between element path & SourceCodeInfo.Location
             (contains information about source comments)
         '''
-        super(Enum, self).__init__(ENUM_PATH, index, comments)
+        super(Enum, self).__init__(ProtoElement.ENUM, index, comments)
 
         self.options = enum_options
         self.names = names
@@ -373,8 +365,7 @@ class Enum(ProtoElement):
         return max([varint_max_size(v) for n,v in self.values])
 
     def __str__(self):
-        enum_path = self.element_path()
-        leading_comment, trailing_comment = self.get_comments(enum_path, leading_indent=False)
+        leading_comment, trailing_comment = self.get_comments()
 
         result = ''
         if leading_comment:
@@ -385,8 +376,7 @@ class Enum(ProtoElement):
         enum_length = len(self.values)
         enum_values = []
         for index, (name, value) in enumerate(self.values):
-            member_path = self.member_path(index)
-            leading_comment, trailing_comment = self.get_comments(member_path)
+            leading_comment, trailing_comment = self.get_member_comments(index)
 
             if leading_comment:
                 enum_values.append(leading_comment)
@@ -461,12 +451,13 @@ class FieldMaxSize:
 
         self.checks.extend(extend.checks)
 
-class Field:
+class Field(ProtoElement):
     macro_x_param = 'X'
     macro_a_param = 'a'
 
-    def __init__(self, struct_name, desc, field_options):
+    def __init__(self, struct_name, desc, field_options, parent_path = (), index = None, comments = None):
         '''desc is FieldDescriptorProto'''
+        ProtoElement.__init__(self, ProtoElement.FIELD, index, comments, parent_path)
         self.tag = desc.number
         self.struct_name = struct_name
         self.union_name = None
@@ -479,10 +470,11 @@ class Field:
         self.data_item_size = None
         self.ctype = None
         self.fixed_count = False
+        self.index = index
         self.callback_datatype = field_options.callback_datatype
         self.math_include_required = False
         self.sort_by_tag = field_options.sort_by_tag
-
+        
         if field_options.type == nanopb_pb2.FT_INLINE:
             # Before nanopb-0.3.8, fixed length bytes arrays were specified
             # by setting type to FT_INLINE. But to handle pointer typed fields,
@@ -548,7 +540,7 @@ class Field:
             if can_be_static:
                 field_options.type = nanopb_pb2.FT_STATIC
             else:
-                field_options.type = nanopb_pb2.FT_CALLBACK
+                field_options.type = field_options.fallback_type
 
         if field_options.type == nanopb_pb2.FT_STATIC and not can_be_static:
             raise Exception("Field '%s' is defined as static, but max_size or "
@@ -656,6 +648,11 @@ class Field:
             elif self.rules == 'REPEATED':
                 result += '    pb_size_t ' + self.name + '_count;\n'
             result += '    %s %s%s;' % (self.ctype, self.name, self.array_decl)
+
+        leading_comment, trailing_comment = self.get_comments(leading_indent = True)
+        if leading_comment: result = leading_comment + "\n" + result
+        if trailing_comment: result = result + " " + trailing_comment
+
         return result
 
     def types(self):
@@ -1023,6 +1020,7 @@ class OneOf(Field):
         self.allocation = 'ONEOF'
         self.default = None
         self.rules = 'ONEOF'
+        self.index = None
         self.anonymous = oneof_options.anonymous_oneof
         self.sort_by_tag = oneof_options.sort_by_tag
         self.has_msg_cb = False
@@ -1126,7 +1124,7 @@ class OneOf(Field):
 
 class Message(ProtoElement):
     def __init__(self, names, desc, message_options, index, comments):
-        super(Message, self).__init__(MESSAGE_PATH, index, comments)
+        super(Message, self).__init__(ProtoElement.MESSAGE, index, comments)
         self.name = names
         self.fields = []
         self.oneofs = {}
@@ -1168,7 +1166,7 @@ class Message(ProtoElement):
         else:
             sys.stderr.write('Note: This Python protobuf library has no OneOf support\n')
 
-        for f in desc.field:
+        for index, f in enumerate(desc.field):
             field_options = get_nanopb_suboptions(f, message_options, self.name + f.name)
             if field_options.type == nanopb_pb2.FT_IGNORE:
                 continue
@@ -1176,7 +1174,7 @@ class Message(ProtoElement):
             if field_options.descriptorsize > self.descriptorsize:
                 self.descriptorsize = field_options.descriptorsize
 
-            field = Field(self.name, f, field_options)
+            field = Field(self.name, f, field_options, self.element_path, index, self.comments)
             if hasattr(f, 'oneof_index') and f.HasField('oneof_index'):
                 if hasattr(f, 'proto3_optional') and f.proto3_optional:
                     no_unions.append(f.oneof_index)
@@ -1211,8 +1209,7 @@ class Message(ProtoElement):
         return deps
 
     def __str__(self):
-        message_path = self.element_path()
-        leading_comment, trailing_comment = self.get_comments(message_path, leading_indent=False)
+        leading_comment, trailing_comment = self.get_comments()
 
         result = ''
         if leading_comment:
@@ -1225,17 +1222,7 @@ class Message(ProtoElement):
             # Therefore add a dummy field if an empty message occurs.
             result += '    char dummy_field;'
 
-        msg_fields = []
-        for index, field in enumerate(self.fields):
-            member_path = self.member_path(index)
-            leading_comment, trailing_comment = self.get_comments(member_path)
-
-            if leading_comment:
-                msg_fields.append(leading_comment)
-
-            msg_fields.append("%s %s" % (str(field), trailing_comment))
-
-        result += '\n'.join(msg_fields)
+        result += '\n'.join([str(f) for f in self.fields])
 
         if Globals.protoc_insertion_points:
             result += '\n/* @@protoc_insertion_point(struct:%s) */' % self.name
@@ -1441,6 +1428,9 @@ class Message(ProtoElement):
                     raise Exception("Could not find enum type %s while generating default values for %s.\n" % (enumname, self.name)
                                     + "Try passing all source files to generator at once, or use -I option.")
 
+                if not isinstance(enumtype, Enum):
+                    raise Exception("Expected enum type as %s, got %s" % (enumname, repr(enumtype)))
+
                 if field.HasField('default_value'):
                     defvals = [v for n,v in enumtype.values if n.parts[-1] == field.default_value]
                 else:
@@ -1462,6 +1452,8 @@ class Message(ProtoElement):
         optional_only.ClearField(str('nested_type'))
         optional_only.ClearField(str('extension'))
         optional_only.ClearField(str('enum_type'))
+        optional_only.name += str(id(self))
+
         desc = google.protobuf.descriptor.MakeDescriptor(optional_only)
         msg = reflection.MakeClass(desc)()
 
@@ -1553,6 +1545,81 @@ def make_identifier(headername):
             result += '_'
     return result
 
+class MangleNames:
+    '''Handles conversion of type names according to mangle_names option:
+    M_NONE = 0; // Default, no typename mangling
+    M_STRIP_PACKAGE = 1; // Strip current package name
+    M_FLATTEN = 2; // Only use last path component
+    M_PACKAGE_INITIALS = 3; // Replace the package name by the initials
+    '''
+    def __init__(self, fdesc, file_options):
+        self.file_options = file_options
+        self.mangle_names = file_options.mangle_names
+        self.flatten = (self.mangle_names == nanopb_pb2.M_FLATTEN)
+        self.strip_prefix = None
+        self.replacement_prefix = None
+        self.name_mapping = {}
+        self.reverse_name_mapping = {}
+
+        if self.mangle_names == nanopb_pb2.M_STRIP_PACKAGE:
+            self.strip_prefix = "." + fdesc.package
+        elif self.mangle_names == nanopb_pb2.M_PACKAGE_INITIALS:
+            self.strip_prefix = "." + fdesc.package
+            self.replacement_prefix = ""
+            for part in fdesc.package.split("."):
+                self.replacement_prefix += part[0]
+        elif file_options.package:
+            self.strip_prefix = "." + fdesc.package
+            self.replacement_prefix = file_options.package
+
+        if self.replacement_prefix is not None:
+            self.base_name = Names(self.replacement_prefix.split('.'))
+        elif fdesc.package:
+            self.base_name = Names(fdesc.package.split('.'))
+        else:
+            self.base_name = Names()
+
+    def create_name(self, names):
+        '''Create name for a new message / enum.
+        Argument can be either string or Names instance.
+        '''
+        if str(names) not in self.name_mapping:
+            if self.mangle_names in (nanopb_pb2.M_NONE, nanopb_pb2.M_PACKAGE_INITIALS):
+                new_name = self.base_name + names
+            elif self.mangle_names == nanopb_pb2.M_STRIP_PACKAGE:
+                new_name = Names(names)
+            elif isinstance(names, Names):
+                new_name = Names(names.parts[-1])
+            else:
+                new_name = Names(names)
+
+            if str(new_name) in self.reverse_name_mapping:
+                sys.stderr.write("Warning: Duplicate name with mangle_names=%s: %s and %s map to %s\n" %
+                    (self.mangle_names, self.reverse_name_mapping[str(new_name)], names, new_name))
+
+            self.name_mapping[str(names)] = new_name
+            self.reverse_name_mapping[str(new_name)] = names
+
+        return self.name_mapping[str(names)]
+
+    def mangle_field_typename(self, typename):
+        '''Mangle type name for a submessage / enum crossreference.
+        Argument is a string.
+        '''
+        if self.mangle_names == nanopb_pb2.M_FLATTEN:
+            return "." + typename.split(".")[-1]
+
+        if self.strip_prefix is not None and typename.startswith(self.strip_prefix):
+            if self.replacement_prefix is not None:
+                return "." + self.replacement_prefix + typename[len(self.strip_prefix):]
+            else:
+                return typename[len(self.strip_prefix):]
+
+        if self.file_options.package:
+            return "." + self.replacement_prefix + typename
+
+        return typename
+
 class ProtoFile:
     def __init__(self, fdesc, file_options):
         '''Takes a FileDescriptorProto and parses it.'''
@@ -1574,67 +1641,23 @@ class ProtoFile:
         self.enums = []
         self.messages = []
         self.extensions = []
-
-        mangle_names = self.file_options.mangle_names
-        flatten = mangle_names == nanopb_pb2.M_FLATTEN
-        strip_prefix = None
-        replacement_prefix = None
-        if mangle_names == nanopb_pb2.M_STRIP_PACKAGE:
-            strip_prefix = "." + self.fdesc.package
-        elif mangle_names == nanopb_pb2.M_PACKAGE_INITIALS:
-            strip_prefix = "." + self.fdesc.package
-            replacement_prefix = ""
-            for part in self.fdesc.package.split("."):
-                replacement_prefix += part[0]
-        elif self.file_options.package:
-            strip_prefix = "." + self.fdesc.package
-            replacement_prefix = self.file_options.package
-
-
-        def create_name(names):
-            if mangle_names in (nanopb_pb2.M_NONE, nanopb_pb2.M_PACKAGE_INITIALS):
-                return base_name + names
-            if mangle_names == nanopb_pb2.M_STRIP_PACKAGE:
-                return Names(names)
-            single_name = names
-            if isinstance(names, Names):
-                single_name = names.parts[-1]
-            return Names(single_name)
-
-        def mangle_field_typename(typename):
-            if mangle_names == nanopb_pb2.M_FLATTEN:
-                return "." + typename.split(".")[-1]
-            if strip_prefix is not None and typename.startswith(strip_prefix):
-                if replacement_prefix is not None:
-                    return "." + replacement_prefix + typename[len(strip_prefix):]
-                else:
-                    return typename[len(strip_prefix):]
-            if self.file_options.package:
-                return "." + replacement_prefix + typename
-            return typename
-
-        if replacement_prefix is not None:
-            base_name = Names(replacement_prefix.split('.'))
-        elif self.fdesc.package:
-            base_name = Names(self.fdesc.package.split('.'))
-        else:
-            base_name = Names()
+        self.manglenames = MangleNames(self.fdesc, self.file_options)
 
         # process source code comment locations
         # ignores any locations that do not contain any comment information
         self.comment_locations = {
-            str(list(location.path)): location
+            tuple(location.path): location
             for location in self.fdesc.source_code_info.location
             if location.leading_comments or location.leading_detached_comments or location.trailing_comments
         }
 
         for index, enum in enumerate(self.fdesc.enum_type):
-            name = create_name(enum.name)
+            name = self.manglenames.create_name(enum.name)
             enum_options = get_nanopb_suboptions(enum, self.file_options, name)
             self.enums.append(Enum(name, enum, enum_options, index, self.comment_locations))
 
-        for index, (names, message) in enumerate(iterate_messages(self.fdesc, flatten)):
-            name = create_name(names)
+        for index, (names, message) in enumerate(iterate_messages(self.fdesc, self.manglenames.flatten)):
+            name = self.manglenames.create_name(names)
             message_options = get_nanopb_suboptions(message, self.file_options, name)
 
             if message_options.skip_message:
@@ -1643,21 +1666,21 @@ class ProtoFile:
             message = copy.deepcopy(message)
             for field in message.field:
                 if field.type in (FieldD.TYPE_MESSAGE, FieldD.TYPE_ENUM):
-                    field.type_name = mangle_field_typename(field.type_name)
+                    field.type_name = self.manglenames.mangle_field_typename(field.type_name)
 
             self.messages.append(Message(name, message, message_options, index, self.comment_locations))
             for index, enum in enumerate(message.enum_type):
-                name = create_name(names + enum.name)
+                name = self.manglenames.create_name(names + enum.name)
                 enum_options = get_nanopb_suboptions(enum, message_options, name)
                 self.enums.append(Enum(name, enum, enum_options, index, self.comment_locations))
 
-        for names, extension in iterate_extensions(self.fdesc, flatten):
-            name = create_name(names + extension.name)
+        for names, extension in iterate_extensions(self.fdesc, self.manglenames.flatten):
+            name = self.manglenames.create_name(names + extension.name)
             field_options = get_nanopb_suboptions(extension, self.file_options, name)
 
             extension = copy.deepcopy(extension)
             if extension.type in (FieldD.TYPE_MESSAGE, FieldD.TYPE_ENUM):
-                extension.type_name = mangle_field_typename(extension.type_name)
+                extension.type_name = self.manglenames.mangle_field_typename(extension.type_name)
 
             if field_options.type != nanopb_pb2.FT_IGNORE:
                 self.extensions.append(ExtensionField(name, extension, field_options))
@@ -1804,14 +1827,29 @@ class ProtoFile:
             # If we require a symbol from another file, put a preprocessor if statement
             # around it to prevent compilation errors if the symbol is not actually available.
             local_defines = [identifier for identifier, msize in messagesizes if msize is not None]
+
+            # emit size_unions, if any
+            oneof_sizes = []
+            for msg in self.messages:
+                for f in msg.fields:
+                    if isinstance(f, OneOf):
+                        msize = f.encoded_size(self.dependencies)
+                        if msize is not None:
+                            oneof_sizes.append(msize)
+            for msize in oneof_sizes:
+                guard = msize.get_cpp_guard(local_defines)
+                if guard:
+                    yield guard
+                yield msize.get_declarations()
+                if guard:
+                    yield '#endif\n'
+
             guards = {}
             for identifier, msize in messagesizes:
                 if msize is not None:
                     cpp_guard = msize.get_cpp_guard(local_defines)
                     if cpp_guard not in guards:
                         guards[cpp_guard] = set()
-                    for decl in msize.get_declarations().splitlines():
-                        guards[cpp_guard].add(decl)
                     guards[cpp_guard].add('#define %-40s %s' % (identifier, msize))
                 else:
                     yield '/* %s depends on runtime parameters */\n' % identifier
@@ -1966,7 +2004,7 @@ def read_options_file(infile):
             text_format.Merge(parts[1], opts)
         except Exception as e:
             sys.stderr.write("%s:%d: " % (infile.name, i + 1) +
-                             "Unparseable option line: '%s'. " % line +
+                             "Unparsable option line: '%s'. " % line +
                              "Error: %s\n" % str(e))
             sys.exit(1)
         results.append((parts[0], opts))
@@ -2035,9 +2073,9 @@ optparser.add_option("-S", "--source-extension", dest="source_extension", metava
     help="Set extension to use for generated source files. [default: %default]")
 optparser.add_option("-f", "--options-file", dest="options_file", metavar="FILE", default="%s.options",
     help="Set name of a separate generator options file.")
-optparser.add_option("-I", "--options-path", dest="options_path", metavar="DIR",
+optparser.add_option("-I", "--options-path", "--proto-path", dest="options_path", metavar="DIR",
     action="append", default = [],
-    help="Search for .options files additionally in this path")
+    help="Search path for .options and .proto files. Also determines relative paths for output directory structure.")
 optparser.add_option("--error-on-unmatched", dest="error_on_unmatched", action="store_true", default=False,
                      help ="Stop generation if there are unmatched fields in options file")
 optparser.add_option("--no-error-on-unmatched", dest="error_on_unmatched", action="store_false", default=False,
@@ -2095,7 +2133,7 @@ def parse_file(filename, fdesc, options):
             optfilename = os.path.join(p, optfilename)
             if options.verbose:
                 sys.stderr.write('Reading options from ' + optfilename + '\n')
-            Globals.separate_options = read_options_file(open(optfilename, openmode_unicode))
+            Globals.separate_options = read_options_file(open(optfilename, 'r', encoding = 'utf-8'))
             break
     else:
         # If we are given a full filename and it does not exist, give an error.
@@ -2201,8 +2239,9 @@ def main_cli():
                          % (google.protobuf.__file__, google.protobuf.__version__))
 
     # Load .pb files into memory and compile any .proto files.
-    fdescs = {}
     include_path = ['-I%s' % p for p in options.options_path]
+    all_fdescs = {}
+    out_fdescs = {}
     for filename in filenames:
         if filename.endswith(".proto"):
             with TemporaryDirectory() as tmpdir:
@@ -2213,18 +2252,23 @@ def main_cli():
         else:
             data = open(filename, 'rb').read()
 
-        fdesc = descriptor.FileDescriptorSet.FromString(data).file[-1]
-        fdescs[fdesc.name] = fdesc
+        fdescs = descriptor.FileDescriptorSet.FromString(data).file
+        last_fdesc = fdescs[-1]
+
+        for fdesc in fdescs:
+          all_fdescs[fdesc.name] = fdesc
+
+        out_fdescs[last_fdesc.name] = last_fdesc
 
     # Process any include files first, in order to have them
     # available as dependencies
     other_files = {}
-    for fdesc in fdescs.values():
+    for fdesc in all_fdescs.values():
         other_files[fdesc.name] = parse_file(fdesc.name, fdesc, options)
 
     # Then generate the headers / sources
     Globals.verbose_options = options.verbose
-    for fdesc in fdescs.values():
+    for fdesc in out_fdescs.values():
         results = process_file(fdesc.name, fdesc, options, other_files)
 
         base_dir = options.output_dir or ''
