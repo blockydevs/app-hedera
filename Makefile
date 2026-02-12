@@ -34,7 +34,7 @@ APPVERSION_P = 0
 APPVERSION = "$(APPVERSION_M).$(APPVERSION_N).$(APPVERSION_P)"
 
 # Application source files
-APP_SOURCE_PATH  += src proto
+APP_SOURCE_PATH  += src
 SDK_SOURCE_PATH  += lib_u2f
 
 # Application icons
@@ -103,18 +103,16 @@ APP_SOURCE_FILES += ${BOLOS_SDK}/lib_standard_app/crypto_helpers.c
 
 # Additional include paths
 INCLUDES_PATH += ${BOLOS_SDK}/lib_standard_app $(NANOPB_DIR) .
-
+INCLUDES_PATH += proto
 include vendor/nanopb/extra/nanopb.mk
 
 DEFINES   += PB_NO_ERRMSG=1
-SOURCE_FILES += $(NANOPB_CORE)
 
 PB_FILES = $(wildcard proto/*.proto)
 C_PB_FILES = $(patsubst %.proto,%.pb.c,$(PB_FILES))
 PYTHON_PB_FILES = $(patsubst %.proto,%_pb2.py,$(PB_FILES))
 
 # Build rule for C proto files
-SOURCE_FILES += $(C_PB_FILES)
 
 .PHONY: c_pb python_pb clean_python_pb
 
@@ -143,3 +141,28 @@ check:
 		$(addprefix -I, $(INCLUDES_PATH))
 
 include $(BOLOS_SDK)/Makefile.standard_app
+
+# --- nanopb + proto built with -fPIC, linked with the rest ---
+NANOPB_PIC_OBJDIR   := $(TARGET_BUILD_DIR)/nanopb_pic
+NANOPB_PIC_CFLAGS   := $(filter-out -fropi -frwpi,$(CFLAGS)) -fPIC
+NANOPB_PIC_CORE_O   := $(NANOPB_PIC_OBJDIR)/pb_encode.o $(NANOPB_PIC_OBJDIR)/pb_decode.o $(NANOPB_PIC_OBJDIR)/pb_common.o
+NANOPB_PIC_PROTO_O  := $(addprefix $(NANOPB_PIC_OBJDIR)/,$(notdir $(C_PB_FILES:.c=.o)))
+NANOPB_PIC_OBJECTS  := $(NANOPB_PIC_CORE_O) $(NANOPB_PIC_PROTO_O)
+OBJECT_FILES        += $(NANOPB_PIC_OBJECTS)
+
+$(NANOPB_PIC_OBJDIR):
+	@mkdir -p $@
+
+NANOPB_PIC_CC = $(CC) -c $(NANOPB_PIC_CFLAGS) -MMD -MT $@ -MF $(NANOPB_PIC_OBJDIR)/$*.d $(addprefix -D,$(DEFINES)) $(addprefix -I,$(INCLUDES_PATH)) -o $@ $<
+
+# nanopb core
+$(NANOPB_PIC_OBJDIR)/%.o: $(NANOPB_DIR)/%.c | $(NANOPB_PIC_OBJDIR) prepare
+	@echo "[CC-PIC]   $@"
+	@$(NANOPB_PIC_CC)
+
+# proto *.pb.c
+$(NANOPB_PIC_OBJDIR)/%.pb.o: proto/%.pb.c | $(NANOPB_PIC_OBJDIR) prepare
+	@echo "[CC-PIC]   $@"
+	@$(NANOPB_PIC_CC)
+
+$(BIN_DIR)/app.elf: $(NANOPB_PIC_OBJECTS)

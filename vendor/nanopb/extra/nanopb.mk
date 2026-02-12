@@ -7,6 +7,9 @@ NANOPB_DIR := $(patsubst %/,%,$(dir $(patsubst %/,%,$(dir $(lastword $(MAKEFILE_
 # Files for the nanopb core
 NANOPB_CORE = $(NANOPB_DIR)/pb_encode.c $(NANOPB_DIR)/pb_decode.c $(NANOPB_DIR)/pb_common.c
 
+ifndef BOLOS_SDK
+CFLAGS += -fPIC
+endif
 # Check if we are running on Windows
 ifdef windir
 WINDOWS = 1
