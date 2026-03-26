@@ -34,6 +34,7 @@ import SCons.Util
 from SCons.Script import Dir, File
 import os.path
 import platform
+import sys
 
 try:
     warningbase = SCons.Warnings.SConsWarning
@@ -46,7 +47,7 @@ SCons.Warnings.enableWarningClass(NanopbWarning)
 
 def _detect_nanopb(env):
     '''Find the path to nanopb root directory.'''
-    if env.has_key('NANOPB'):
+    if 'NANOPB' in env:
         # Use nanopb dir given by user
         return env['NANOPB']
 
@@ -60,7 +61,7 @@ def _detect_nanopb(env):
 
 def _detect_python(env):
     '''Find Python executable to use.'''
-    if env.has_key('PYTHON'):
+    if 'PYTHON' in env:
         return env['PYTHON']
 
     p = env.WhereIs('python3')
@@ -85,7 +86,7 @@ def _detect_nanopb_generator(env):
 
 def _detect_protoc(env):
     '''Find the path to the protoc compiler.'''
-    if env.has_key('PROTOC'):
+    if 'PROTOC' in env:
         # Use protoc defined by user
         return env['PROTOC']
 
@@ -113,7 +114,7 @@ def _detect_protoc(env):
 
 def _detect_protocflags(env):
     '''Find the options to use for protoc.'''
-    if env.has_key('PROTOCFLAGS'):
+    if 'PROTOCFLAGS' in env:
         return env['PROTOCFLAGS']
 
     p = _detect_protoc(env)
@@ -151,7 +152,7 @@ def _nanopb_proto_actions(source, target, env, for_signature):
     else:
       nanopb_flags = '--source-extension=%s,--header-extension=%s:.' % (source_extension, header_extension)
 
-    return SCons.Action.CommandAction('$PROTOC $PROTOCFLAGS %s --nanopb_out=%s %s' % (include_dirs, nanopb_flags, srcfile),
+    return SCons.Action.CommandAction('$PROTOC $PROTOCFLAGS %s "--nanopb_out=%s" %s' % (include_dirs, nanopb_flags, srcfile),
                                       chdir = prefix)
 
 def _nanopb_proto_emitter(target, source, env):

@@ -157,7 +157,7 @@ bool pb_field_iter_begin(pb_field_iter_t *iter, const pb_msgdesc_t *desc, void *
 {
     memset(iter, 0, sizeof(*iter));
 
-    iter->descriptor = PIC(desc);
+    iter->descriptor = desc;
     iter->message = message;
 
     return load_descriptor_values(iter);

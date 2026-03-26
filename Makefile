@@ -109,6 +109,8 @@ include vendor/nanopb/extra/nanopb.mk
 DEFINES   += PB_NO_ERRMSG=1
 SOURCE_FILES += $(NANOPB_CORE)
 
+NANOPB_PROTO_DIR = $(NANOPB_DIR)/generator/proto
+NANOPB_PROTO     = $(NANOPB_PROTO_DIR)/nanopb.proto
 PB_FILES = $(wildcard proto/*.proto)
 C_PB_FILES = $(patsubst %.proto,%.pb.c,$(PB_FILES))
 PYTHON_PB_FILES = $(patsubst %.proto,%_pb2.py,$(PB_FILES))
@@ -123,7 +125,7 @@ c_pb:
 
 python_pb:
 	$(PROTOC) $(PROTOC_OPTS) --python_out=. $(PB_FILES)
-
+	$(PROTOC) --python_out=$(NANOPB_PROTO_DIR) -I $(NANOPB_PROTO_DIR) $(NANOPB_PROTO)
 clean_python_pb:
 	rm -f $(PYTHON_PB_FILES)
 
