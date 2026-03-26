@@ -1392,6 +1392,33 @@ def test_hedera_erc20_known_by_hedera_id(backend, firmware, navigator, scenario_
     rapdu = hedera.get_async_response()
     assert rapdu.status == STATUS_OK
 
+def test_hedera_erc20_known_by_hedera_id_minimal_amount(backend, firmware, navigator, scenario_navigator, test_name):
+    hedera = HederaClient(backend)
+    key_index = 1
+    to_address = "abcdefabcdefabcdefabcdefabcdefabcdefabcd"
+    amount = 1 # Minimal amount is 1 wei (10^-18 ETH)
+    params = encode_erc20_transfer_web3(to_address, amount)
+    conf = contract_call_conf(
+        gas=21000,
+        amount=0,
+        function_parameters=params,
+        contract_shard_num=0,
+        contract_realm_num=0,
+        contract_num=9470869,
+    )
+    with hedera.send_sign_transaction(
+        index=key_index,
+        operator_shard_num=1,
+        operator_realm_num=2,
+        operator_account_num=3,
+        transaction_fee=5,
+        memo="ERC20 known tokenID minimal amount",
+        conf=conf,
+    ):
+        navigate_erc20_confirm(firmware, navigator, scenario_navigator, ROOT_SCREENSHOT_PATH, test_name)
+    rapdu = hedera.get_async_response()
+    assert rapdu.status == STATUS_OK
+
 def test_hedera_erc20_wrong_selector(backend, firmware, scenario_navigator):
     hedera = HederaClient(backend)
 
