@@ -40,6 +40,67 @@ class HederaTests(ExchangeTestRunner):
     wrong_fees_error_code = 0x6980
 
     def perform_final_tx(self, destination, send_amount, fees, memo):
+            hedera = HederaClient(self.backend)
+
+            # Create the transaction configuration
+            conf = crypto_transfer_hbar_conf(
+                sender_shardNum=57,
+                sender_realmNum=58,
+                sender_accountNum=59,
+                recipient_shardNum=100,
+                recipient_realmNum=101,
+                recipient_accountNum=int(destination.split(".")[2]),
+                amount=send_amount,
+            )
+
+            # Use index 12345 for signing
+            index = 12345
+
+            # The operator parameters for the transaction
+            operator_shard_num = 1
+            operator_realm_num = 2
+            operator_account_num = 3
+            test_memo = "this_is_the_memo"
+
+
+            public_key = bytes.fromhex(HEDERA_PUBLIC_KEY)
+
+            # Create the transaction
+            transaction = hedera_transaction(
+                operator_shard_num=operator_shard_num,
+                operator_realm_num=operator_realm_num,
+                operator_account_num=operator_account_num,
+                transaction_fee=fees,
+                memo=test_memo,
+                conf=conf,
+            )
+
+            # Prepare the full payload (index + transaction)
+            transaction_to_sign = index.to_bytes(4, "little") + transaction
+
+            # Sign the transaction
+            signature = hedera.sign_transaction(
+                index=index,
+                operator_shard_num=operator_shard_num,
+                operator_realm_num=operator_realm_num,
+                operator_account_num=operator_account_num,
+                transaction_fee=fees,
+                memo=test_memo,
+                conf=conf,
+            )
+
+            if not signature or len(signature) == 0:
+                return
+
+            # Verify the signature
+            signature_valid = hedera.verify_signature(public_key, transaction_to_sign, signature)
+            assert signature_valid, "Signature verification failed"
+
+class HederaTestsMinAmount(HederaTests):
+    valid_send_amount_1 = 1
+    valid_fees_1 = 1
+
+    def perform_final_tx(self, destination, send_amount, fees, memo):
         hedera = HederaClient(self.backend)
 
         # Create the transaction configuration
@@ -103,3 +164,6 @@ class TestsHedera:
     @pytest.mark.parametrize('test_to_run', ALL_TESTS_EXCEPT_MEMO_AND_THORSWAP)
     def tests_hedera(self, backend, exchange_navigation_helper, test_to_run):
         HederaTests(backend, exchange_navigation_helper).run_test(test_to_run)
+    @pytest.mark.parametrize('test_to_run', ALL_TESTS_EXCEPT_MEMO_AND_THORSWAP)
+    def tests_hedera_min_amount(self, backend, exchange_navigation_helper, test_to_run):
+       HederaTestsMinAmount(backend, exchange_navigation_helper).run_test(test_to_run)
