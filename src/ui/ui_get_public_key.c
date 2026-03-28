@@ -9,6 +9,8 @@
 
 #if defined(TARGET_NANOS)
 
+static void compare_pk(void);
+
 static const bagl_element_t ui_get_public_key_compare[] = {
     UI_BACKGROUND(), UI_ICON_LEFT(LEFT_ICON_ID, BAGL_GLYPH_ICON_LEFT),
     UI_ICON_RIGHT(RIGHT_ICON_ID, BAGL_GLYPH_ICON_RIGHT),
@@ -18,6 +20,17 @@ static const bagl_element_t ui_get_public_key_compare[] = {
     //
     UI_TEXT(LINE_1_ID, 0, 12, 128, "Public Key"),
     UI_TEXT(LINE_2_ID, 0, 26, 128, gpk_ctx.partial_key)};
+
+static const bagl_element_t ui_get_public_key_prompt[] = {
+    UI_BACKGROUND(), UI_ICON_LEFT(LEFT_ICON_ID, BAGL_GLYPH_ICON_LEFT),
+    UI_ICON_RIGHT(RIGHT_ICON_ID, BAGL_GLYPH_ICON_RIGHT),
+    //
+    //    Export Public
+    //       Key #123?
+    //
+    UI_TEXT(LINE_1_ID, 0, 12, 128, "Export Public"),
+    UI_TEXT(LINE_2_ID, 0, 26, 128, gpk_ctx.ui_approve_l2),
+};
 
 static const bagl_element_t ui_get_public_key_approve[] = {
     UI_BACKGROUND(),
@@ -34,6 +47,19 @@ static const bagl_element_t ui_get_public_key_approve[] = {
 static void shift_partial_key() {
     memmove(gpk_ctx.partial_key, gpk_ctx.full_key + gpk_ctx.display_index,
             DISPLAY_SIZE);
+}
+
+static unsigned int ui_get_public_key_prompt_button(
+    unsigned int button_mask, unsigned int button_mask_counter) {
+    UNUSED(button_mask_counter);
+    switch (button_mask) {
+        case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // Continue
+            compare_pk();
+            break;
+        default:
+            break;
+    }
+    return 0;
 }
 
 static unsigned int ui_get_public_key_compare_button(
@@ -54,7 +80,7 @@ static unsigned int ui_get_public_key_compare_button(
             UX_REDISPLAY();
             break;
         case BUTTON_EVT_RELEASED | BUTTON_LEFT | BUTTON_RIGHT: // Continue
-            ui_idle();
+            UX_DISPLAY(ui_get_public_key_approve, NULL);
             break;
     }
     return 0;
@@ -93,7 +119,7 @@ static unsigned int ui_get_public_key_approve_button(
 
         case BUTTON_EVT_RELEASED | BUTTON_RIGHT: // APPROVE
             io_exchange_with_code(EXCEPTION_OK, 32);
-            compare_pk();
+            ui_idle();
             break;
 
         default:
@@ -105,16 +131,9 @@ static unsigned int ui_get_public_key_approve_button(
 
 #elif defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 
-UX_STEP_CB(ux_compare_pk_flow_1_step, bnnn_paging, ui_idle(),
-           {.title = "Public Key", .text = (char *)gpk_ctx.full_key});
-
-UX_DEF(ux_compare_pk_flow, &ux_compare_pk_flow_1_step);
-
-static void compare_pk() { ux_flow_init(0, ux_compare_pk_flow, NULL); }
-
 static unsigned int pk_approved() {
     io_exchange_with_code(EXCEPTION_OK, 32);
-    compare_pk();
+    ui_idle();
     return 0;
 }
 
@@ -124,17 +143,23 @@ static unsigned int pk_rejected() {
     return 0;
 }
 
-UX_STEP_NOCB(ux_approve_pk_flow_1_step, bn,
+UX_STEP_NOCB(ux_export_pk_flow_1_step, bn,
              {"Export Public", gpk_ctx.ui_approve_l2});
 
-UX_STEP_VALID(ux_approve_pk_flow_2_step, pb, pk_approved(),
+UX_STEP_NOCB(ux_export_pk_flow_2_step, bnnn_paging,
+             {.title = "Public Key", .text = (char *)gpk_ctx.full_key});
+
+UX_STEP_VALID(ux_export_pk_flow_3_step, pb, pk_approved(),
               {&C_icon_validate_14, "Approve"});
 
-UX_STEP_VALID(ux_approve_pk_flow_3_step, pb, pk_rejected(),
+UX_STEP_VALID(ux_export_pk_flow_4_step, pb, pk_rejected(),
               {&C_icon_crossmark, "Reject"});
 
-UX_DEF(ux_approve_pk_flow, &ux_approve_pk_flow_1_step,
-       &ux_approve_pk_flow_2_step, &ux_approve_pk_flow_3_step);
+UX_DEF(ux_export_pk_flow, &ux_export_pk_flow_1_step,
+       &ux_export_pk_flow_2_step, &ux_export_pk_flow_3_step,
+       &ux_export_pk_flow_4_step);
+
+static void compare_pk() { ux_flow_init(0, ux_export_pk_flow, NULL); }
 
 #elif defined(HAVE_NBGL)
 
@@ -162,11 +187,11 @@ static void ui_get_public_key_nbgl(void) {
 void ui_get_public_key(void) {
 #if defined(TARGET_NANOS)
 
-    UX_DISPLAY(ui_get_public_key_approve, NULL);
+    UX_DISPLAY(ui_get_public_key_prompt, ui_get_public_key_prompt_button);
 
 #elif defined(TARGET_NANOX) || defined(TARGET_NANOS2)
 
-    ux_flow_init(0, ux_approve_pk_flow, NULL);
+    compare_pk();
 
 #elif defined(HAVE_NBGL)
 
