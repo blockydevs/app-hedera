@@ -1,8 +1,7 @@
 from ragger.backend.interface import RAPDU, RaisePolicy
 from ragger.navigator import NavInsID
-from ragger.firmware import Firmware
-from ragger.firmware.touch.use_cases import UseCaseReview
 import pytest
+from ledgered.devices import Devices
 
 from tests.application_client.hedera import HederaClient, ErrorType, STATUS_OK
 from tests.application_client.hedera_builder import crypto_create_account_conf, crypto_transfer_verify, \
@@ -43,9 +42,10 @@ def test_hedera_get_public_key_ok(backend, firmware, navigator, test_name):
         backend.wait_for_home_screen()
         assert from_public_key.hex() == key
         with hedera.get_public_key_confirm(index):
-            if firmware.device == "nanos":
+            device_info = Devices.get_by_type(firmware)
+            if device_info.name == "nanos":
                 nav_ins = [NavInsID.RIGHT_CLICK]
-            elif backend.firmware.device.startswith("nano"):
+            elif device_info.name.startswith("nano"):
                 nav_ins = [NavInsID.RIGHT_CLICK,
                            NavInsID.BOTH_CLICK]
             else:
@@ -60,9 +60,10 @@ def test_hedera_get_public_key_ok(backend, firmware, navigator, test_name):
 def test_hedera_get_public_key_refused(backend, firmware, navigator, test_name):
     hedera = HederaClient(backend)
     with hedera.get_public_key_confirm(0):
-        if firmware.device == "nanos":
+        device_info = Devices.get_by_type(firmware)
+        if device_info.name == "nanos":
             nav_ins = [NavInsID.LEFT_CLICK]
-        elif backend.firmware.device.startswith("nano"):
+        elif device_info.name.startswith("nano"):
             nav_ins = [NavInsID.RIGHT_CLICK,
                        NavInsID.RIGHT_CLICK,
                        NavInsID.BOTH_CLICK]
@@ -75,7 +76,7 @@ def test_hedera_get_public_key_refused(backend, firmware, navigator, test_name):
     rapdu = hedera.get_async_response()
     assert rapdu.status == ErrorType.EXCEPTION_USER_REJECTED
 
-    if not firmware.is_nano:
+    if not device_info.name.startswith("nano"):
         with hedera.get_public_key_confirm(0):
             backend.raise_policy = RaisePolicy.RAISE_NOTHING
             nav_ins = [NavInsID.USE_CASE_REVIEW_NEXT,
@@ -266,9 +267,10 @@ def test_hedera_crypto_update_account_refused(backend, firmware, scenario_naviga
         conf=conf,
     ):
         backend.raise_policy = RaisePolicy.RAISE_NOTHING
-        if firmware is Firmware.NANOS:
+        device_info = Devices.get_by_type(firmware)
+        if device_info.name == "nanos":
             scenario_navigator.review_reject(custom_screen_text="Deny")
-        elif firmware.is_nano:
+        elif device_info.name.startswith("nano"):
             scenario_navigator.review_reject(custom_screen_text="Reject")
         else:
             navigation_helper_reject(firmware, scenario_navigator)
@@ -1984,7 +1986,8 @@ def test_hedera_erc20_reject_warning(backend, firmware, navigator, scenario_navi
 
 
 def test_hedera_erc20_show_qr_code(backend, firmware, navigator, scenario_navigator, test_name):
-    if firmware.is_nano:
+    device_info = Devices.get_by_type(firmware)
+    if device_info.name.startswith("nano"):
         pytest.skip("QR codes are not implemented for nano")
         return
 
