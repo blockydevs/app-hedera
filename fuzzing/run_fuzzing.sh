@@ -61,6 +61,7 @@ setup_directories() {
     # Create corpus directories for each fuzzer
     mkdir -p "$CORPUS_DIR/proto_varlen_parser"
     mkdir -p "$CORPUS_DIR/evm_payload"
+    mkdir -p "$CORPUS_DIR/hedera_format_amount"
     
     print_status "Directories created"
 }
@@ -89,7 +90,9 @@ generate_corpus() {
     printf "\\xFF\\xFF\\xFF\\xFF\\x0F\\x0A\\x05Hello" > "$CORPUS_DIR/proto_varlen_parser/large_field.bin"
     printf "\\x00\\x01" > "$CORPUS_DIR/proto_varlen_parser/invalid_field.bin"
     printf "\\x0F\\x01" > "$CORPUS_DIR/proto_varlen_parser/unknown_wire.bin"
-    
+    # hedera_format_amount seeds
+    printf "\x01\x00\x00\x00\x00\x00\x00\x00\x08" > "$CORPUS_DIR/hedera_format_amount/one_dec8.bin"
+    printf "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x13" > "$CORPUS_DIR/hedera_format_amount/max_dec19.bin"
     # EVM payload seeds
     # ERC20 transfer selector only
     printf "\xA9\x05\x9C\xBB" > "$CORPUS_DIR/evm_payload/selector.bin"
@@ -156,7 +159,7 @@ run_fuzzer() {
 run_all_fuzzers() {
     print_status "Starting fuzzing campaign..."
     
-    local fuzzers=("proto_varlen_parser" "evm_payload")
+    local fuzzers=("proto_varlen_parser" "evm_payload" "hedera_format_amount")
     
     for fuzzer in "${fuzzers[@]}"; do
         run_fuzzer "$fuzzer" "$FUZZ_TIME"

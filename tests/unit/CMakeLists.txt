@@ -84,6 +84,7 @@ add_executable(test_sign_contract_call
     ../../src/printf.c
     ../../src/time_format.c
     ../../src/hedera_format.c
+    ../../src/hedera_format_amount.c
     ../../proto/timestamp.pb.c
     ../../proto/wrappers.pb.c
     ../../proto/contract_call.pb.c
@@ -140,6 +141,7 @@ add_executable(test_pb_decode_erc20
     ../../src/sign_contract_call.c
     ../../src/evm_parser.c
     ../../src/hedera_format.c
+    ../../src/hedera_format_amount.c
     ../../src/time_format.c
     ../../src/printf.c
     ../../src/ui/app_globals.h
