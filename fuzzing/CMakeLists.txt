@@ -90,3 +90,10 @@ add_executable(fuzz_evm_payload
 )
 target_compile_definitions(fuzz_evm_payload PRIVATE NO_BOLOS_SDK=1)
 target_link_libraries(fuzz_evm_payload mock_bolos)
+
+add_executable(fuzz_swap_token_utils
+    fuzzer_swap_token_utils.c
+    ../src/swap/swap_token_utils.c
+)
+target_compile_definitions(fuzz_swap_token_utils PRIVATE NO_BOLOS_SDK=1)
+target_link_libraries(fuzz_swap_token_utils mock_bolos)
